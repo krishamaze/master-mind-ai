@@ -17,8 +17,16 @@ Browser Extension → Django API → Mem0 Memory Layer
 ## Quick Start Guide
 1. Clone the repository.
 2. Copy `env.example` to `.env` and update values.
-3. Install backend dependencies and run migrations.
-4. Launch the Django server.
+3. Install backend dependencies and run migrations:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   python manage.py migrate
+   ```
+4. Launch the Django server:
+   ```bash
+   python manage.py runserver
+   ```
 5. Load the browser extension in developer mode.
 
 ## Technology Stack
