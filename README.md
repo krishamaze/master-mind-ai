@@ -37,7 +37,12 @@ Browser Extension → Django API → Mem0 Memory Layer
 - Chrome Extension (Manifest V3)
 
 ## Development Setup
-*Coming soon — detailed setup instructions will be added.*
+
+### Browser Extension
+The extension source resides in the `extension/` directory. Load this folder as
+an unpacked extension from Chrome's Extensions page (Developer Mode). Configure
+the backend URL and API token through the popup before capturing
+conversations.
 
 ## Contributing Guidelines
 *Contribution instructions forthcoming. Stay tuned!*
