@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from decouple import config, Csv
+from urllib.parse import urlparse
+
+from decouple import Csv, config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -55,17 +57,32 @@ TEMPLATES = [
 WSGI_APPLICATION = "mastermind.wsgi.application"
 ASGI_APPLICATION = "mastermind.asgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
-        "HOST": config("POSTGRES_HOST", default="localhost"),
-        "PORT": config("POSTGRES_PORT", cast=int, default=5432),
-        "OPTIONS": {"options": "-c search_path=public,pgvector"},
+SUPABASE_DB_URL = config("SUPABASE_DB_URL", default="")
+if SUPABASE_DB_URL:
+    parsed_url = urlparse(SUPABASE_DB_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed_url.path.lstrip("/"),
+            "USER": parsed_url.username,
+            "PASSWORD": parsed_url.password,
+            "HOST": parsed_url.hostname,
+            "PORT": parsed_url.port or 5432,
+            "OPTIONS": {"options": "-c search_path=public,pgvector"},
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("POSTGRES_DB"),
+            "USER": config("POSTGRES_USER"),
+            "PASSWORD": config("POSTGRES_PASSWORD"),
+            "HOST": config("POSTGRES_HOST", default="localhost"),
+            "PORT": config("POSTGRES_PORT", cast=int, default=5432),
+            "OPTIONS": {"options": "-c search_path=public,pgvector"},
+        }
+    }
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
@@ -84,6 +101,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Mem0.ai configuration
 MEM0_API_KEY = config("MEM0_API_KEY", default="")
 MEM0_API_BASE_URL = config("MEM0_API_BASE_URL", default="https://api.mem0.ai")
+MEM0_PROVIDER = config("MEM0_PROVIDER", default="supabase")
+MEM0_EMBEDDING_DIM = config("MEM0_EMBEDDING_DIM", cast=int, default=1536)
+MEM0_INDEX_METHOD = config("MEM0_INDEX_METHOD", default="hnsw")
 
 ENVIRONMENT = config("ENVIRONMENT", default="development")
 CORS_ALLOW_CREDENTIALS = True
