@@ -29,6 +29,10 @@ Browser Extension → Django API → Mem0 Memory Layer
    ```
 5. Load the browser extension in developer mode.
 
+## Testing & Deployment
+See [`docs/testing.md`](docs/testing.md) for running backend and extension tests.
+Deployment steps and security practices are described in [`docs/deployment.md`](docs/deployment.md).
+
 ## Technology Stack
 - Django
 - PostgreSQL
