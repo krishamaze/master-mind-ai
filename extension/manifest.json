@@ -28,8 +28,7 @@
     {
       "matches": ["https://claude.ai/*"],
       "js": ["content/claude.js"],
-      "run_at": "document_idle",
-      "type": "module"
+      "run_at": "document_idle"
     },
     {
       "matches": ["https://gemini.google.com/*"],
