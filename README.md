@@ -29,6 +29,9 @@ Browser Extension → Django API → Mem0 Memory Layer
    ```
 5. Load the browser extension in developer mode.
 
+## File Structure
+See [`docs/file-structure.md`](docs/file-structure.md) for an overview of repository files and directories.
+
 ## Testing & Deployment
 See [`docs/testing.md`](docs/testing.md) for running backend and extension tests.
 Deployment steps and security practices are described in [`docs/deployment.md`](docs/deployment.md).
