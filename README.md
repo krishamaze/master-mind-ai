@@ -33,6 +33,13 @@ Browser Extension → Django API → Mem0 Memory Layer
 See [`docs/testing.md`](docs/testing.md) for running backend and extension tests.
 Deployment steps and security practices are described in [`docs/deployment.md`](docs/deployment.md).
 
+## API Endpoints
+
+- `GET /api/v1/health/` – Service health check
+- `POST /api/v1/conversations/` – Store a conversation
+- `POST /api/v1/conversations/search/` – Search stored memories
+- `POST /api/v1/prompts/enhance/` – Enhance a prompt with relevant memories
+
 ## Technology Stack
 - Django
 - PostgreSQL
