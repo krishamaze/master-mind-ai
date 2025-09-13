@@ -5,12 +5,18 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from decouple import Csv, config
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", cast=bool, default=False)
+
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="", cast=Csv())
+RENDER_HOSTNAME = config("RENDER_EXTERNAL_HOSTNAME", default="")
+if RENDER_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_HOSTNAME)
+ALLOWED_HOSTS.append(".onrender.com")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -27,6 +33,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -57,8 +64,19 @@ TEMPLATES = [
 WSGI_APPLICATION = "mastermind.wsgi.application"
 ASGI_APPLICATION = "mastermind.asgi.application"
 
+DATABASE_URL = config("DATABASE_URL", default="")
 SUPABASE_DB_URL = config("SUPABASE_DB_URL", default="")
-if SUPABASE_DB_URL:
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=not DEBUG,
+        )
+    }
+    DATABASES["default"]["OPTIONS"] = {"options": "-c search_path=public,pgvector"}
+elif SUPABASE_DB_URL:
     parsed_url = urlparse(SUPABASE_DB_URL)
     DATABASES = {
         "default": {
@@ -95,6 +113,8 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -112,3 +132,9 @@ SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
+}
