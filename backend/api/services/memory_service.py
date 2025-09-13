@@ -58,3 +58,25 @@ class MemoryService:
             filters=filters,
             vector_store=self.vector_store,
         )
+
+    def enhance_prompt(self, prompt: str, *, limit: int = 5) -> str:
+        """Enhance a prompt with relevant memories.
+
+        Memories retrieved from the vector store are prepended to the prompt,
+        separated by blank lines. If the service is disabled or no memories are
+        found, the original prompt is returned unchanged.
+        """
+        if not self.client:
+            return prompt
+
+        memories = self.search_memories(prompt, limit=limit)
+        context: List[str] = []
+        for memory in memories:
+            text = memory.get("content") or memory.get("memory") or ""
+            if text:
+                context.append(text)
+
+        if not context:
+            return prompt
+
+        return "\n".join(context) + "\n\n" + prompt

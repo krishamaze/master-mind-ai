@@ -25,3 +25,24 @@ class MemoryServiceTests(TestCase):
         service = MemoryService()
         self.assertEqual(service.add_memory("test"), {})
         self.assertEqual(service.search_memories("test"), [])
+
+    @override_settings(
+        MEM0_API_KEY="key",
+        SUPABASE_DB_URL="postgres://",
+        MEM0_API_BASE_URL="https://mem0.example",
+        MEM0_PROVIDER="supabase",
+        MEM0_EMBEDDING_DIM=1536,
+        MEM0_INDEX_METHOD="hnsw",
+    )
+    def test_enhance_prompt_includes_memories(self) -> None:
+        with patch("api.services.memory_service.MemoryClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client_cls.return_value = mock_client
+            service = MemoryService()
+            with patch.object(
+                MemoryService, "search_memories", return_value=[{"content": "data"}]
+            ) as mock_search:
+                result = service.enhance_prompt("hello")
+                self.assertIn("data", result)
+                self.assertTrue(result.endswith("hello"))
+                mock_search.assert_called_once_with("hello", limit=5)
