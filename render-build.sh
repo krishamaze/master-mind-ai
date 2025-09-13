@@ -2,6 +2,7 @@
 set -o errexit
 
 # Build script for Render
+# Dependencies are installed during the Docker build stage, so this script
+# only needs to collect static assets.
 cd /app
-pip install --no-cache-dir -r requirements.txt
 python manage.py collectstatic --noinput
