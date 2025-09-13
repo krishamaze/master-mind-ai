@@ -1,9 +1,14 @@
 import DOMObserver from '../shared/dom-observer.js';
 import { getPlatformConfig } from '../shared/platform-config.js';
+import FloatingEnhanceButton from '../shared/floating-enhance-button.js';
+import TextReplacementManager from '../shared/text-replacement-manager.js';
+import EnhancementUI from '../shared/enhancement-ui.js';
 
 const { platform, selectors } = getPlatformConfig('chatgpt');
 
 const observer = new DOMObserver(selectors);
+const ui = new EnhancementUI();
+const button = new FloatingEnhanceButton(() => handleEnhance());
 
 observer.subscribe('conversation-capture', () => {
   const nodes = document.querySelectorAll(selectors['conversation-capture']);
@@ -21,19 +26,41 @@ observer.subscribe('input-detection', elements => {
   elements.forEach(el => {
     if (el.dataset.mmEnhanceBound) return;
     el.dataset.mmEnhanceBound = 'true';
-    el.addEventListener('keydown', e => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        const prompt = el.value || el.textContent || '';
-        if (!prompt.trim()) return;
-        chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
-          if (res?.success && res.data?.enhanced_prompt) {
-            el.value = res.data.enhanced_prompt;
-          }
-        });
-        e.preventDefault();
+
+    const updateButton = () => {
+      if (document.activeElement === el && TextReplacementManager.hasMinimumText(el)) {
+        button.attach(el);
+      } else if (button.target === el) {
+        button.detach();
       }
+    };
+
+    el.addEventListener('input', updateButton);
+    el.addEventListener('focus', updateButton);
+    el.addEventListener('blur', () => {
+      if (button.target === el) button.detach();
     });
   });
 });
+
+function handleEnhance() {
+  const el = button.target;
+  if (!el) return;
+  const prompt = TextReplacementManager.getText(el);
+  if (!prompt.trim()) return;
+  ui.showLoading();
+  chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
+    if (chrome.runtime.lastError || !res?.success || !res.data?.enhanced_prompt) {
+      ui.showError('Sorry, enhancement is unavailable. Please try again later.');
+      return;
+    }
+    const enhanced = res.data.enhanced_prompt;
+    ui.showPreview(enhanced).then(use => {
+      if (use) {
+        TextReplacementManager.setText(el, enhanced);
+      }
+    });
+  });
+}
 
 observer.start();
