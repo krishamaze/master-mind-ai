@@ -27,6 +27,7 @@ root
 │   ├── manifest.json         # Extension manifest (MV3)
 │   ├── background.js         # Background script handling events
 │   ├── content/              # Content scripts for capturing conversations
+│   ├── shared/               # Reusable modules (DOM observer, platform config)
 │   ├── popup.html            # Popup UI markup
 │   ├── popup.js              # Logic for popup interactions
 │   ├── api.js                # Client for backend API requests
