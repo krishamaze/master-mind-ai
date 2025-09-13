@@ -59,16 +59,8 @@ class MemoryService:
             vector_store=self.vector_store,
         )
 
-    def enhance_prompt(self, prompt: str, *, limit: int = 5) -> str:
-        """Enhance a prompt with relevant memories.
-
-        Memories retrieved from the vector store are prepended to the prompt,
-        separated by blank lines. If the service is disabled or no memories are
-        found, the original prompt is returned unchanged.
-        """
-        if not self.client:
-            return prompt
-
+    def _prepend_memories(self, prompt: str, *, limit: int = 5) -> str:
+        """Fallback enhancement by prepending retrieved memories."""
         memories = self.search_memories(prompt, limit=limit)
         context: List[str] = []
         for memory in memories:
@@ -80,3 +72,40 @@ class MemoryService:
             return prompt
 
         return "\n".join(context) + "\n\n" + prompt
+
+    def enhance_prompt(
+        self, prompt: str, *, limit: int = 5, user_id: str = "test_user"
+    ) -> str:
+        """Enhance a prompt using Mem0 chat completions.
+
+        If chat completion fails, falls back to simple memory prepending.
+        """
+        if not self.client:
+            return prompt
+
+        try:
+            response = self.client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Enhance the user's prompt with relevant context from their memory. "
+                            "Return ONLY the enhanced prompt."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                include_memories=True,
+                limit=3,
+                user_id=user_id,
+            )
+            enhanced = (
+                response.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+            return enhanced or prompt
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.error("Mem0 chat completion failed: %s", exc)
+            return self._prepend_memories(prompt, limit=limit)

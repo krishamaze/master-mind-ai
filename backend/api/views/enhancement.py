@@ -28,7 +28,7 @@ def enhance_prompt(request):
 
     try:
         enhanced = MemoryService().enhance_prompt(prompt)
-        return JsonResponse({"prompt": enhanced})
+        return JsonResponse({"enhanced_prompt": enhanced})
     except Exception as exc:  # pragma: no cover - external dependency
         logger.error("Prompt enhancement failed: %s", exc)
         return JsonResponse({"detail": "enhancement failed"}, status=500)

@@ -27,5 +27,7 @@ class EnhancementEndpointTests(SimpleTestCase):
         )
         response = enhance_prompt(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(json.loads(response.content), {"prompt": "improved"})
+        self.assertEqual(
+            json.loads(response.content), {"enhanced_prompt": "improved"}
+        )
         mock_enhance.assert_called_once_with("hello")
