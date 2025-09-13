@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import logging
 
+from django.db import DatabaseError, connection
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +16,22 @@ from .serializers import ConversationSerializer, ProjectSerializer, UserProfileS
 from .services.memory_service import MemoryService
 
 logger = logging.getLogger(__name__)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def health_check(_request) -> JsonResponse:
+    """Health check endpoint for monitoring and Chrome extension."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        return JsonResponse(
+            {"status": "ok", "service": "master-mind-ai", "database": "connected"}
+        )
+    except DatabaseError:
+        return JsonResponse(
+            {"status": "error", "error": "connection failed"}, status=500
+        )
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
