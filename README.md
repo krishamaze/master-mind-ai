@@ -44,9 +44,11 @@ Deployment steps and security practices are described in [`docs/deployment.md`](
 
 ### Browser Extension
 The extension source resides in the `extension/` directory. Load this folder as
-an unpacked extension from Chrome's Extensions page (Developer Mode). Configure
-the backend URL and API token through the popup before capturing
-conversations.
+an unpacked extension from Chrome's Extensions page (Developer Mode). Choose the
+desired environment (production or development) and set the API token through
+the popup before capturing conversations. See
+[`docs/extension-setup.md`](docs/extension-setup.md) for configuration and
+testing instructions.
 
 ## Contributing Guidelines
 *Contribution instructions forthcoming. Stay tuned!*

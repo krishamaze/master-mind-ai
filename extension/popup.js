@@ -1,21 +1,32 @@
-const baseUrlEl = document.getElementById('baseUrl');
+import { getSettings, setSettings } from './config.js';
+
+const envEl = document.getElementById('environment');
 const tokenEl = document.getElementById('token');
 const statusEl = document.getElementById('status');
+const connectionEl = document.getElementById('connection');
 
-chrome.storage.sync.get(
-  { apiBaseUrl: 'http://localhost:8000', apiToken: '' },
-  ({ apiBaseUrl, apiToken }) => {
-    baseUrlEl.value = apiBaseUrl;
-    tokenEl.value = apiToken;
-  }
-);
+async function updateConnection() {
+  connectionEl.textContent = 'Checking...';
+  chrome.runtime.sendMessage({ type: 'health-check' }, res => {
+    const ok = res?.ok;
+    connectionEl.textContent = ok ? 'Connected' : 'Disconnected';
+    connectionEl.style.color = ok ? 'green' : 'red';
+  });
+}
+
+async function init() {
+  const { environment, apiToken } = await getSettings();
+  envEl.value = environment;
+  tokenEl.value = apiToken;
+  updateConnection();
+}
+
+init();
 
 document.getElementById('save').addEventListener('click', () => {
-  chrome.storage.sync.set(
-    { apiBaseUrl: baseUrlEl.value, apiToken: tokenEl.value },
-    () => {
-      statusEl.textContent = 'Saved';
-      setTimeout(() => (statusEl.textContent = ''), 2000);
-    }
-  );
+  setSettings({ environment: envEl.value, apiToken: tokenEl.value }).then(() => {
+    statusEl.textContent = 'Saved';
+    setTimeout(() => (statusEl.textContent = ''), 2000);
+    updateConnection();
+  });
 });

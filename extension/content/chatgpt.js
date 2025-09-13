@@ -10,7 +10,14 @@ function getMessages() {
 const sendUpdates = debounce(() => {
   const messages = getMessages();
   if (messages.length) {
-    chrome.runtime.sendMessage({ type: 'conversation', platform, messages });
+    chrome.runtime.sendMessage(
+      { type: 'conversation', platform, messages },
+      res => {
+        if (!res?.success) {
+          console.error('Failed to save conversation', res?.error);
+        }
+      }
+    );
   }
 });
 
