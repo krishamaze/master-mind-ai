@@ -23,6 +23,10 @@ Update `API_BASE_URL` and related secrets in Render dashboard:
 - `API_BASE_URL` → `https://master-mind-ai.onrender.com`
 - Any additional tokens required by the extension or backend.
 
+## Background Worker Behavior
+- The background script checks backend health on startup and when the extension is installed.
+- Saved conversations automatically include an ISO timestamp in their request payload.
+
 ## Testing Procedures
 - Run Jest tests for the extension:
   ```bash
