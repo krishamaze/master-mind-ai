@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: mastermind-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    buildCommand: ./render-build.sh
+    startCommand: ./render-start.sh
+    preDeployCommand: ./render-predeploy.sh
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mastermind-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MEM0_API_KEY
+        sync: false
+    autoDeploy: true
+    numInstances: 1
+
+databases:
+  - name: mastermind-db
+    plan: free
+    diskSizeGB: 10
+    ipAllowList: []
+    postgresExtensions:
+      - pgvector
