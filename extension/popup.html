@@ -7,13 +7,17 @@
 </head>
 <body>
   <h1>Master Mind AI</h1>
-  <label>API Base URL
-    <input id="baseUrl" type="text" placeholder="http://localhost:8000" />
+  <label>Environment
+    <select id="environment">
+      <option value="production">Production</option>
+      <option value="development">Development</option>
+    </select>
   </label>
   <label>API Token
     <input id="token" type="text" placeholder="token" />
   </label>
   <button id="save">Save</button>
+  <div id="connection"></div>
   <div id="status"></div>
   <script type="module" src="popup.js"></script>
 </body>
