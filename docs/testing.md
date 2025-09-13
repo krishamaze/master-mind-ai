@@ -3,6 +3,7 @@
 ## Backend
 - Install dependencies: `pip install -r backend/requirements.txt`
 - Run tests: `cd backend && pytest`
+- Verify health endpoint: `curl http://localhost:8000/api/v1/health/`
 
 ## Browser Extension
 - Install Node dependencies: `cd extension && npm install`
