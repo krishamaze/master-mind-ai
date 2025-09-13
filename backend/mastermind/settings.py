@@ -68,37 +68,46 @@ DATABASE_URL = config("DATABASE_URL", default="")
 SUPABASE_DB_URL = config("SUPABASE_DB_URL", default="")
 
 if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=not DEBUG,
-        )
-    }
-    DATABASES["default"]["OPTIONS"] = {"options": "-c search_path=public,pgvector"}
+    default_db = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
+    default_db.setdefault("ENGINE", "django.db.backends.postgresql")
+    options = default_db.setdefault("OPTIONS", {})
+    options.update({"options": "-c search_path=public,pgvector"})
+    DATABASES = {"default": default_db}
 elif SUPABASE_DB_URL:
     parsed_url = urlparse(SUPABASE_DB_URL)
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": parsed_url.path.lstrip("/"),
-            "USER": parsed_url.username,
-            "PASSWORD": parsed_url.password,
-            "HOST": parsed_url.hostname,
+            "NAME": parsed_url.path.lstrip("/") or "",
+            "USER": parsed_url.username or "",
+            "PASSWORD": parsed_url.password or "",
+            "HOST": parsed_url.hostname or "",
             "PORT": parsed_url.port or 5432,
-            "OPTIONS": {"options": "-c search_path=public,pgvector"},
+            "CONN_MAX_AGE": 600,
+            "OPTIONS": {
+                "options": "-c search_path=public,pgvector",
+                "sslmode": "require" if not DEBUG else "prefer",
+            },
         }
     }
 else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("POSTGRES_DB"),
-            "USER": config("POSTGRES_USER"),
-            "PASSWORD": config("POSTGRES_PASSWORD"),
+            "NAME": config("POSTGRES_DB", default=""),
+            "USER": config("POSTGRES_USER", default=""),
+            "PASSWORD": config("POSTGRES_PASSWORD", default=""),
             "HOST": config("POSTGRES_HOST", default="localhost"),
             "PORT": config("POSTGRES_PORT", cast=int, default=5432),
-            "OPTIONS": {"options": "-c search_path=public,pgvector"},
+            "CONN_MAX_AGE": 600,
+            "OPTIONS": {
+                "options": "-c search_path=public,pgvector",
+                "sslmode": "require" if not DEBUG else "prefer",
+            },
         }
     }
 
@@ -136,6 +145,17 @@ CSRF_COOKIE_SECURE = not DEBUG
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        }
+    },
     "root": {"handlers": ["console"], "level": "INFO"},
 }
