@@ -1,10 +1,16 @@
-import { debounce } from './utils.js';
-
 /**
  * Content script for capturing conversations on claude.ai.
  * Observes DOM mutations, extracts user/assistant messages and
  * sends them to the Master Mind AI backend.
  */
+
+function debounce(fn, wait = 500) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(null, args), wait);
+  };
+}
 
 const CONFIG = {
   API_URL: 'https://master-mind-ai.onrender.com/api/v1/conversations/',
