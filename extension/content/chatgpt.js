@@ -50,11 +50,11 @@ function handleEnhance() {
   if (!prompt.trim()) return;
   ui.showLoading();
   chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
-    if (chrome.runtime.lastError || !res?.success || !res.data?.enhanced_prompt) {
+    const enhanced = res?.data?.enhanced_prompt;
+    if (chrome.runtime.lastError || !res?.success || !enhanced) {
       ui.showError('Sorry, enhancement is unavailable. Please try again later.');
       return;
     }
-    const enhanced = res.data.enhanced_prompt;
     ui.showPreview(enhanced).then(use => {
       if (use) {
         TextReplacementManager.setText(el, enhanced);

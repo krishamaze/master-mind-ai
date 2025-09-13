@@ -37,6 +37,7 @@ class MemoryServiceTests(TestCase):
     def test_enhance_prompt_includes_memories(self) -> None:
         with patch("api.services.memory_service.MemoryClient") as mock_client_cls:
             mock_client = MagicMock()
+            mock_client.chat.completions.create.side_effect = Exception("boom")
             mock_client_cls.return_value = mock_client
             service = MemoryService()
             with patch.object(
@@ -46,3 +47,4 @@ class MemoryServiceTests(TestCase):
                 self.assertIn("data", result)
                 self.assertTrue(result.endswith("hello"))
                 mock_search.assert_called_once_with("hello", limit=5)
+                mock_client.chat.completions.create.assert_called_once()
