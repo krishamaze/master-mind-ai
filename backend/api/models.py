@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.conf import settings
 from pgvector.django import VectorField
 
 
@@ -36,7 +37,7 @@ class Conversation(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     content_embedding = VectorField(
-        dimensions=1536,
+        dimensions=settings.MEM0_EMBEDDING_DIM,
         null=True,
         blank=True,
         help_text="Vector representation for semantic search",

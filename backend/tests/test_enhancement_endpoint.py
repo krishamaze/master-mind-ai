@@ -20,6 +20,18 @@ class EnhancementEndpointTests(SimpleTestCase):
         response = enhance_prompt(request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_invalid_json_returns_400(self) -> None:
+        request = self.factory.post(
+            "/prompts/enhance/",
+            data="{",
+            content_type="application/json",
+        )
+        response = enhance_prompt(request)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            json.loads(response.content), {"detail": "invalid JSON"}
+        )
+
     @patch("api.views.enhancement.MemoryService.enhance_prompt", return_value="improved")
     def test_returns_enhanced_prompt(self, mock_enhance) -> None:
         request = self.factory.post(

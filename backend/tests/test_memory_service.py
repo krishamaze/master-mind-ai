@@ -50,3 +50,28 @@ class MemoryServiceTests(TestCase):
                     "hello", limit=5, filters={"user_id": "user1"}
                 )
                 mock_client.chat.completions.create.assert_called_once()
+
+    @override_settings(
+        MEM0_API_KEY="key",
+        SUPABASE_DB_URL="postgres://",
+        MEM0_API_BASE_URL="https://mem0.example",
+        MEM0_PROVIDER="supabase",
+        MEM0_EMBEDDING_DIM=1536,
+        MEM0_INDEX_METHOD="hnsw",
+    )
+    def test_enhance_prompt_respects_limit(self) -> None:
+        """Custom limit should be forwarded to chat completions."""
+        with patch("api.services.memory_service.MemoryClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = {
+                "choices": [{"message": {"content": "enhanced"}}]
+            }
+            mock_client_cls.return_value = mock_client
+            service = MemoryService()
+
+            result = service.enhance_prompt("hello", limit=2, user_id="user1")
+
+            self.assertEqual(result, "enhanced")
+            mock_client.chat.completions.create.assert_called_once()
+            _, kwargs = mock_client.chat.completions.create.call_args
+            self.assertEqual(kwargs.get("limit"), 2)
