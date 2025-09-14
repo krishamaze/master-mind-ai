@@ -106,7 +106,7 @@ class MemoryService:
                     {"role": "user", "content": prompt},
                 ],
                 include_memories=True,
-                limit=3,
+                limit=limit,
                 user_id=user_id,
             )
 

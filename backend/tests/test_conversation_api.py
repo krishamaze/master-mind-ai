@@ -15,7 +15,7 @@ class ConversationAPITests(SimpleTestCase):
         self.factory = APIRequestFactory()
 
     def test_search_requires_query(self) -> None:
-        request = self.factory.post("/conversations/search/", {})
+        request = self.factory.post("/conversations/search/", {}, format="json")
         view = ConversationViewSet.as_view({"post": "search"})
         response = view(request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
