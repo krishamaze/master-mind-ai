@@ -11,6 +11,8 @@ services:
       - DJANGO_SETTINGS_MODULE=mastermind.settings
       - MEM0_API_KEY=${MEM0_API_KEY}
       - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
       - db
   db:

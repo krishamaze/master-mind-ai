@@ -5,8 +5,8 @@
 - Services: Django backend and PostgreSQL.
 
 ## Environment
-- Set `MEM0_API_KEY` and `SUPABASE_DB_URL` before running.
-- Use `.env` files or platform secrets, never commit keys.
+- Configure `MEM0_API_KEY`, `SUPABASE_DB_URL`, `SUPABASE_URL`, and `SUPABASE_KEY` before running.
+- Copy `env.example` to `.env` and populate values. The `.env` file is git-ignored; use platform secrets for production.
 
 ## Security Best Practices
 - Rotate secrets regularly.

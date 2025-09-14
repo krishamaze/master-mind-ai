@@ -19,8 +19,10 @@ class MemoryService:
 
         api_key = getattr(settings, "MEM0_API_KEY", "")
         db_url = getattr(settings, "SUPABASE_DB_URL", "")
+        supabase_url = getattr(settings, "SUPABASE_URL", "")
+        supabase_key = getattr(settings, "SUPABASE_KEY", "")
 
-        if not api_key or not db_url:
+        if not all([api_key, db_url, supabase_url, supabase_key]):
             logger.warning("Mem0 service disabled: missing configuration")
             self.client = None
             self.vector_store = None
@@ -31,6 +33,8 @@ class MemoryService:
             "provider": settings.MEM0_PROVIDER,
             "config": {
                 "connection_string": db_url,
+                "supabase_url": supabase_url,
+                "supabase_key": supabase_key,
                 "embedding_model_dims": settings.MEM0_EMBEDDING_DIM,
                 "index_method": settings.MEM0_INDEX_METHOD,
             },

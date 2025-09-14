@@ -29,6 +29,24 @@ Browser Extension → Django API → Mem0 Memory Layer
    ```
 5. Load the browser extension in developer mode.
 
+## Environment Variables
+
+Configuration uses a `.env` file. Copy the example file and supply your values:
+
+```bash
+cp env.example .env
+```
+
+Key settings include:
+
+- `DATABASE_URL` – PostgreSQL connection string (`postgresql://...`)
+- `SUPABASE_URL` and `SUPABASE_KEY` – Supabase project credentials
+- `SUPABASE_DB_URL` – Supabase PostgreSQL connection string
+- `SUPABASE_SERVICE_ROLE_KEY` – optional service role key for admin tasks
+- `MEM0_API_KEY` – Mem0.ai API key
+
+The `.env` file is git-ignored and must be created in each environment.
+
 ## File Structure
 See [`docs/file-structure.md`](docs/file-structure.md) for an overview of repository files and directories.
 

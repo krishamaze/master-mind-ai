@@ -2,18 +2,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from urllib.parse import urlparse
 
-from decouple import Csv, config
-import dj_database_url
+import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config("SECRET_KEY")
-DEBUG = config("DEBUG", cast=bool, default=False)
+env = environ.Env()
+environ.Env.read_env()
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="", cast=Csv())
-RENDER_HOSTNAME = config("RENDER_EXTERNAL_HOSTNAME", default="")
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env.bool("DEBUG", default=False)
+
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+RENDER_HOSTNAME = env("RENDER_EXTERNAL_HOSTNAME", default="")
 if RENDER_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_HOSTNAME)
 ALLOWED_HOSTS.append(".onrender.com")
@@ -64,52 +65,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "mastermind.wsgi.application"
 ASGI_APPLICATION = "mastermind.asgi.application"
 
-DATABASE_URL = config("DATABASE_URL", default="")
-SUPABASE_DB_URL = config("SUPABASE_DB_URL", default="")
-
-if DATABASE_URL:
-    default_db = dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=not DEBUG,
+DATABASES = {
+    "default": env.db(
+        "DATABASE_URL",
+        default="postgresql://postgres:postgres@localhost:5432/postgres",
     )
-    default_db.setdefault("ENGINE", "django.db.backends.postgresql")
-    options = default_db.setdefault("OPTIONS", {})
-    options.update({"options": "-c search_path=public,pgvector"})
-    DATABASES = {"default": default_db}
-elif SUPABASE_DB_URL:
-    parsed_url = urlparse(SUPABASE_DB_URL)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": parsed_url.path.lstrip("/") or "",
-            "USER": parsed_url.username or "",
-            "PASSWORD": parsed_url.password or "",
-            "HOST": parsed_url.hostname or "",
-            "PORT": parsed_url.port or 5432,
-            "CONN_MAX_AGE": 600,
-            "OPTIONS": {
-                "options": "-c search_path=public,pgvector",
-                "sslmode": "require" if not DEBUG else "prefer",
-            },
-        }
+}
+DATABASES["default"]["CONN_MAX_AGE"] = 600
+db_options = DATABASES["default"].setdefault("OPTIONS", {})
+db_options.update(
+    {
+        "options": "-c search_path=public,pgvector",
+        "sslmode": "require" if not DEBUG else "prefer",
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("POSTGRES_DB", default=""),
-            "USER": config("POSTGRES_USER", default=""),
-            "PASSWORD": config("POSTGRES_PASSWORD", default=""),
-            "HOST": config("POSTGRES_HOST", default="localhost"),
-            "PORT": config("POSTGRES_PORT", cast=int, default=5432),
-            "CONN_MAX_AGE": 600,
-            "OPTIONS": {
-                "options": "-c search_path=public,pgvector",
-                "sslmode": "require" if not DEBUG else "prefer",
-            },
-        }
-    }
+)
+
+SUPABASE_DB_URL = env("SUPABASE_DB_URL", default="")
+SUPABASE_URL = env("SUPABASE_URL")
+SUPABASE_KEY = env("SUPABASE_KEY")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
@@ -119,7 +92,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^chrome-extension://.*$"]
 
 STATIC_URL = "static/"
@@ -129,13 +102,13 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Mem0.ai configuration
-MEM0_API_KEY = config("MEM0_API_KEY", default="")
-MEM0_API_BASE_URL = config("MEM0_API_BASE_URL", default="https://api.mem0.ai")
-MEM0_PROVIDER = config("MEM0_PROVIDER", default="supabase")
-MEM0_EMBEDDING_DIM = config("MEM0_EMBEDDING_DIM", cast=int, default=1536)
-MEM0_INDEX_METHOD = config("MEM0_INDEX_METHOD", default="hnsw")
+MEM0_API_KEY = env("MEM0_API_KEY", default="")
+MEM0_API_BASE_URL = env("MEM0_API_BASE_URL", default="https://api.mem0.ai")
+MEM0_PROVIDER = env("MEM0_PROVIDER", default="supabase")
+MEM0_EMBEDDING_DIM = env.int("MEM0_EMBEDDING_DIM", default=1536)
+MEM0_INDEX_METHOD = env("MEM0_INDEX_METHOD", default="hnsw")
 
-ENVIRONMENT = config("ENVIRONMENT", default="development")
+ENVIRONMENT = env("ENVIRONMENT", default="development")
 CORS_ALLOW_CREDENTIALS = True
 
 SECURE_SSL_REDIRECT = not DEBUG

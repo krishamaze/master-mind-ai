@@ -9,7 +9,16 @@ from api.services.memory_service import MemoryService
 class MemoryServiceTests(TestCase):
     """Validate MemoryService behavior."""
 
-    @override_settings(MEM0_API_KEY="key", SUPABASE_DB_URL="postgres://", MEM0_API_BASE_URL="https://mem0.example", MEM0_PROVIDER="supabase", MEM0_EMBEDDING_DIM=1536, MEM0_INDEX_METHOD="hnsw")
+    @override_settings(
+        MEM0_API_KEY="key",
+        SUPABASE_DB_URL="postgres://",
+        SUPABASE_URL="https://supabase.example",
+        SUPABASE_KEY="anon-key",
+        MEM0_API_BASE_URL="https://mem0.example",
+        MEM0_PROVIDER="supabase",
+        MEM0_EMBEDDING_DIM=1536,
+        MEM0_INDEX_METHOD="hnsw",
+    )
     def test_add_memory_uses_client(self) -> None:
         """add_memory should delegate to client with vector_store."""
         with patch("api.services.memory_service.MemoryClient") as mock_client_cls:
@@ -19,7 +28,12 @@ class MemoryServiceTests(TestCase):
             service.add_memory("hello", {"foo": "bar"})
             mock_client.add.assert_called_once()
 
-    @override_settings(MEM0_API_KEY="", SUPABASE_DB_URL="")
+    @override_settings(
+        MEM0_API_KEY="",
+        SUPABASE_DB_URL="",
+        SUPABASE_URL="",
+        SUPABASE_KEY="",
+    )
     def test_service_disabled_without_config(self) -> None:
         """Service should safely no-op when configuration missing."""
         service = MemoryService()
@@ -29,6 +43,8 @@ class MemoryServiceTests(TestCase):
     @override_settings(
         MEM0_API_KEY="key",
         SUPABASE_DB_URL="postgres://",
+        SUPABASE_URL="https://supabase.example",
+        SUPABASE_KEY="anon-key",
         MEM0_API_BASE_URL="https://mem0.example",
         MEM0_PROVIDER="supabase",
         MEM0_EMBEDDING_DIM=1536,
