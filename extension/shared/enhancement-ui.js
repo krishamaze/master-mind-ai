@@ -43,6 +43,7 @@ export default class EnhancementUI {
   showLoading() {
     this.container.innerHTML = '';
     const box = this._buildBox();
+    
     const spinner = document.createElement('div');
     Object.assign(spinner.style, {
       border: '4px solid #f3f3f3',
@@ -54,57 +55,30 @@ export default class EnhancementUI {
       margin: '0 auto 8px auto'
     });
     box.appendChild(spinner);
+
     const text = document.createElement('div');
     text.textContent = 'Enhancing...';
     text.style.textAlign = 'center';
     box.appendChild(text);
+
     this.container.appendChild(box);
     this.container.style.display = 'flex';
-  }
-
-  showPreview(enhanced) {
-    return new Promise(resolve => {
-      this.container.innerHTML = '';
-      const box = this._buildBox();
-      const preview = document.createElement('div');
-      preview.textContent = enhanced;
-      preview.style.whiteSpace = 'pre-wrap';
-      preview.style.marginBottom = '12px';
-      box.appendChild(preview);
-      const actions = document.createElement('div');
-      actions.style.textAlign = 'right';
-      const useBtn = document.createElement('button');
-      useBtn.textContent = 'Use';
-      useBtn.style.marginRight = '8px';
-      const cancelBtn = document.createElement('button');
-      cancelBtn.textContent = 'Cancel';
-      actions.appendChild(cancelBtn);
-      actions.appendChild(useBtn);
-      box.appendChild(actions);
-      cancelBtn.addEventListener('click', () => {
-        this.hide();
-        resolve(false);
-      });
-      useBtn.addEventListener('click', () => {
-        this.hide();
-        resolve(true);
-      });
-      this.container.appendChild(box);
-      this.container.style.display = 'flex';
-    });
   }
 
   showError(message) {
     this.container.innerHTML = '';
     const box = this._buildBox();
+    
     const text = document.createElement('div');
     text.textContent = message;
     text.style.marginBottom = '12px';
     box.appendChild(text);
+
     const close = document.createElement('button');
     close.textContent = 'Close';
     close.addEventListener('click', () => this.hide());
     box.appendChild(close);
+
     this.container.appendChild(box);
     this.container.style.display = 'flex';
   }

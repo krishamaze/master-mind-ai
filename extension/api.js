@@ -5,6 +5,7 @@ class APIClient {
     const { apiBaseUrl, apiToken } = await getSettings();
     const url = `${apiBaseUrl}${path}`;
     const headers = { 'Content-Type': 'application/json' };
+
     if (apiToken) {
       headers['Authorization'] = `Bearer ${apiToken}`;
     }
@@ -12,7 +13,6 @@ class APIClient {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         console.log(`🌐 API Request: ${method} ${url} (attempt ${attempt + 1})`);
-
         const res = await fetch(url, { method, headers, body });
 
         if (res.status === 429) {
@@ -31,10 +31,8 @@ class APIClient {
         const result = res.status === 204 ? null : await res.json();
         console.log(`✅ API Success: ${method} ${path}`);
         return result;
-
       } catch (err) {
         console.error(`❌ Request failed (attempt ${attempt + 1}):`, err.message);
-
         if (attempt === 2) {
           console.error('❌ All retry attempts failed');
           throw err;
@@ -59,9 +57,14 @@ class APIClient {
   }
 
   enhancePrompt(payload) {
+    const enhancedPayload = {
+      prompt: payload.prompt,
+      user_id: 'testuser'  // Add user_id for Mem0 API requirement
+    };
+
     return this.request('/api/v1/prompts/enhance/', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(enhancedPayload)
     });
   }
 

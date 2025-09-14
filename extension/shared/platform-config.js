@@ -1,12 +1,9 @@
-// Platform-specific DOM selectors and detection logic
-// Extend PLATFORM_CONFIG to support additional platforms.
-
 const PLATFORM_CONFIG = {
   chatgpt: {
-    matches: [/chat\.openai\.com/],
+    matches: [/chat\.openai\.com/, /chatgpt\.com/],
     selectors: {
       'conversation-capture': 'main .markdown',
-      'input-detection': 'textarea#prompt-textarea',
+      'input-detection': 'div#prompt-textarea[contenteditable="true"], .ProseMirror[contenteditable="true"]',
       'message-updates': 'main .markdown'
     }
   },
@@ -39,5 +36,4 @@ export function getPlatformConfig(platform = detectPlatform()) {
 }
 
 export { PLATFORM_CONFIG };
-
 export default { detectPlatform, getPlatformConfig, PLATFORM_CONFIG };

@@ -1,66 +1,67 @@
-import DOMObserver from '../shared/dom-observer.js';
-import { getPlatformConfig } from '../shared/platform-config.js';
-import FloatingEnhanceButton from '../shared/floating-enhance-button.js';
-import TextReplacementManager from '../shared/text-replacement-manager.js';
-import EnhancementUI from '../shared/enhancement-ui.js';
+(async () => {
+  try {
+    console.log('🚀 Loading ChatGPT content script...');
+    
+    const [
+      { default: DOMObserver },
+      { getPlatformConfig },
+      { default: FloatingEnhanceButton },
+      { default: TextReplacementManager },
+      { default: EnhancementUI }
+    ] = await Promise.all([
+      import(chrome.runtime.getURL('shared/dom-observer.js')),
+      import(chrome.runtime.getURL('shared/platform-config.js')),
+      import(chrome.runtime.getURL('shared/floating-enhance-button.js')),
+      import(chrome.runtime.getURL('shared/text-replacement-manager.js')),
+      import(chrome.runtime.getURL('shared/enhancement-ui.js'))
+    ]);
 
-const { platform, selectors } = getPlatformConfig('chatgpt');
+    console.log('✅ All modules loaded successfully');
 
-const observer = new DOMObserver(selectors);
-const ui = new EnhancementUI();
-const button = new FloatingEnhanceButton(() => handleEnhance());
+    const { platform, selectors } = getPlatformConfig('chatgpt');
+    const observer = new DOMObserver(selectors);
+    const ui = new EnhancementUI();
+    const button = new FloatingEnhanceButton(() => handleEnhance());
 
-observer.subscribe('conversation-capture', () => {
-  const nodes = document.querySelectorAll(selectors['conversation-capture']);
-  const messages = Array.from(nodes, n => n.innerText.trim()).filter(Boolean);
-  if (messages.length) {
-    chrome.runtime.sendMessage({ type: 'conversation', platform, messages }, res => {
-      if (!res?.success) {
-        console.error('Failed to save conversation', res?.error);
-      }
-    });
-  }
-});
+    console.log('🔍 Platform config:', platform, selectors);
 
-observer.subscribe('input-detection', elements => {
-  elements.forEach(el => {
-    if (el.dataset.mmEnhanceBound) return;
-    el.dataset.mmEnhanceBound = 'true';
+    function handleEnhance() {
+      console.log('🚀 Enhancement process started');
+      const el = button.target;
+      if (!el) return;
 
-    const updateButton = () => {
-      if (document.activeElement === el && TextReplacementManager.hasMinimumText(el)) {
-        button.attach(el);
-      } else if (button.target === el) {
-        button.detach();
-      }
-    };
+      const prompt = TextReplacementManager.getText(el);
+      if (!prompt.trim()) return;
 
-    el.addEventListener('input', updateButton);
-    el.addEventListener('focus', updateButton);
-    el.addEventListener('blur', () => {
-      if (button.target === el) button.detach();
-    });
-  });
-});
+      ui.showLoading();
 
-function handleEnhance() {
-  const el = button.target;
-  if (!el) return;
-  const prompt = TextReplacementManager.getText(el);
-  if (!prompt.trim()) return;
-  ui.showLoading();
-  chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
-    const enhanced = res?.data?.enhanced_prompt;
-    if (chrome.runtime.lastError || !res?.success || !enhanced) {
-      ui.showError('Sorry, enhancement is unavailable. Please try again later.');
-      return;
-    }
-    ui.showPreview(enhanced).then(use => {
-      if (use) {
+      chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
+        ui.hide();
+        const enhanced = res?.data?.enhanced_prompt;
+        if (!enhanced) {
+          ui.showError('Enhancement failed. Please try again.');
+          return;
+        }
         TextReplacementManager.setText(el, enhanced);
-      }
-    });
-  });
-}
+        console.log('✅ Text replaced');
+      });
+    }
 
-observer.start();
+    observer.subscribe('input-detection', elements => {
+      console.log('📝 Found input elements:', elements.length);
+      elements.forEach(el => {
+        if (!el.dataset.mmEnhanceBound) {
+          el.dataset.mmEnhanceBound = 'true';
+          button.attach(el);
+          console.log('🎯 Button attached');
+        }
+      });
+    });
+
+    observer.start();
+    console.log('👀 Observer started');
+
+  } catch (error) {
+    console.error('❌ Script error:', error);
+  }
+})();

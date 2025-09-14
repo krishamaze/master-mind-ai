@@ -1,4 +1,5 @@
 """Mem0 service integration with Supabase vector store."""
+
 from __future__ import annotations
 
 import logging
@@ -8,7 +9,6 @@ from django.conf import settings
 from mem0.client.main import MemoryClient
 
 logger = logging.getLogger(__name__)
-
 
 class MemoryService:
     """Wrapper around Mem0 client configured to use Supabase."""
@@ -40,6 +40,7 @@ class MemoryService:
         """Store a memory using Mem0."""
         if not self.client:
             return {}
+
         return self.client.add(
             [{"role": "user", "content": text}],
             metadata=metadata or {},
@@ -52,6 +53,11 @@ class MemoryService:
         """Retrieve memories similar to the query."""
         if not self.client:
             return []
+
+        # Ensure filters exist for Mem0 API requirement
+        if not filters:
+            filters = {"user_id": "testuser"}
+
         return self.client.search(
             query,
             top_k=limit,
@@ -59,9 +65,11 @@ class MemoryService:
             vector_store=self.vector_store,
         )
 
-    def _prepend_memories(self, prompt: str, *, limit: int = 5) -> str:
+    def _prepend_memories(self, prompt: str, *, limit: int = 5, user_id: Optional[str] = None) -> str:
         """Fallback enhancement by prepending retrieved memories."""
-        memories = self.search_memories(prompt, limit=limit)
+        filters = {"user_id": user_id} if user_id else {"user_id": "testuser"}
+        memories = self.search_memories(prompt, limit=limit, filters=filters)
+        
         context: List[str] = []
         for memory in memories:
             text = memory.get("content") or memory.get("memory") or ""
@@ -74,7 +82,7 @@ class MemoryService:
         return "\n".join(context) + "\n\n" + prompt
 
     def enhance_prompt(
-        self, prompt: str, *, limit: int = 5, user_id: str = "test_user"
+        self, prompt: str, *, limit: int = 5, user_id: Optional[str] = None
     ) -> str:
         """Enhance a prompt using Mem0 chat completions.
 
@@ -82,6 +90,9 @@ class MemoryService:
         """
         if not self.client:
             return prompt
+
+        # Use provided user_id or fallback to testuser
+        effective_user_id = user_id or "testuser"
 
         try:
             response = self.client.chat.completions.create(
@@ -97,15 +108,17 @@ class MemoryService:
                 ],
                 include_memories=True,
                 limit=3,
-                user_id=user_id,
+                user_id=effective_user_id,
             )
+
             enhanced = (
                 response.get("choices", [{}])[0]
                 .get("message", {})
                 .get("content", "")
                 .strip()
             )
+
             return enhanced or prompt
-        except Exception as exc:  # pragma: no cover - external dependency
+        except Exception as exc: # pragma: no cover - external dependency
             logger.error("Mem0 chat completion failed: %s", exc)
-            return self._prepend_memories(prompt, limit=limit)
+            return self._prepend_memories(prompt, limit=limit, user_id=effective_user_id)

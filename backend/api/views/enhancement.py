@@ -1,4 +1,5 @@
 """Endpoint for prompt enhancement using stored memories."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,6 @@ from django.views.decorators.http import require_http_methods
 from ..services.memory_service import MemoryService
 
 logger = logging.getLogger(__name__)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -26,9 +26,12 @@ def enhance_prompt(request):
     if not prompt:
         return JsonResponse({"detail": "prompt is required"}, status=400)
 
+    # Get user_id from extension request
+    user_id = data.get("user_id")
+
     try:
-        enhanced = MemoryService().enhance_prompt(prompt)
+        enhanced = MemoryService().enhance_prompt(prompt, user_id=user_id)
         return JsonResponse({"enhanced_prompt": enhanced})
-    except Exception as exc:  # pragma: no cover - external dependency
+    except Exception as exc: # pragma: no cover - external dependency
         logger.error("Prompt enhancement failed: %s", exc)
         return JsonResponse({"detail": "enhancement failed"}, status=500)
