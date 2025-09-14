@@ -5,12 +5,12 @@ create extension if not exists vector;
 
 create table if not exists memories (
     id text primary key,
-    embedding vector(1536),
+    content_embedding vector(1536),
     metadata jsonb
 );
 
 -- HNSW index for fast vector search
-create index if not exists memories_embedding_hnsw on memories using hnsw (embedding vector_cosine_ops);
+create index if not exists memories_embedding_hnsw on memories using hnsw (content_embedding vector_cosine_ops);
 
 -- Enable row level security
 alter table memories enable row level security;
@@ -24,10 +24,10 @@ language plpgsql as $$
 begin
     return query
     select m.id, m.metadata,
-           1 - (m.embedding <=> query) as similarity
+           1 - (m.content_embedding <=> query) as similarity
     from memories m
     where m.metadata @> metadata_filter
-    order by m.embedding <=> query
+    order by m.content_embedding <=> query
     limit match_count;
 end;
 $$;

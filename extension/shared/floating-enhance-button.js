@@ -21,15 +21,18 @@ export default class FloatingEnhanceButton {
     });
 
     // Multiple event listeners to ensure click works
-    this.button.addEventListener('click', this.handleClick.bind(this), { capture: true });
-    this.button.addEventListener('mousedown', this.handleClick.bind(this), { capture: true });
-    this.button.addEventListener('touchstart', this.handleClick.bind(this), { capture: true });
+    this.boundClick = this.handleClick.bind(this);
+    this.button.addEventListener('click', this.boundClick, { capture: true });
+    this.button.addEventListener('mousedown', this.boundClick, { capture: true });
+    this.button.addEventListener('touchstart', this.boundClick, { capture: true });
 
     document.body.appendChild(this.button);
     this.target = null;
 
-    window.addEventListener('scroll', () => this.updatePosition(), true);
-    window.addEventListener('resize', () => this.updatePosition());
+    this.boundScroll = () => this.updatePosition();
+    this.boundResize = () => this.updatePosition();
+    window.addEventListener('scroll', this.boundScroll, true);
+    window.addEventListener('resize', this.boundResize);
     
     console.log('🔧 FloatingEnhanceButton created with ID:', this.button.id);
   }
@@ -68,5 +71,16 @@ export default class FloatingEnhanceButton {
     
     this.button.style.top = `${top}px`;
     this.button.style.left = `${left}px`;
+  }
+
+  destroy() {
+    window.removeEventListener('scroll', this.boundScroll, true);
+    window.removeEventListener('resize', this.boundResize);
+    this.button.removeEventListener('click', this.boundClick, { capture: true });
+    this.button.removeEventListener('mousedown', this.boundClick, { capture: true });
+    this.button.removeEventListener('touchstart', this.boundClick, { capture: true });
+    this.button.remove();
+    this.target = null;
+    console.log('🗑️ FloatingEnhanceButton destroyed');
   }
 }

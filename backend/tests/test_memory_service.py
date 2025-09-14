@@ -43,8 +43,10 @@ class MemoryServiceTests(TestCase):
             with patch.object(
                 MemoryService, "search_memories", return_value=[{"content": "data"}]
             ) as mock_search:
-                result = service.enhance_prompt("hello")
+                result = service.enhance_prompt("hello", user_id="user1")
                 self.assertIn("data", result)
                 self.assertTrue(result.endswith("hello"))
-                mock_search.assert_called_once_with("hello", limit=5)
+                mock_search.assert_called_once_with(
+                    "hello", limit=5, filters={"user_id": "user1"}
+                )
                 mock_client.chat.completions.create.assert_called_once()
