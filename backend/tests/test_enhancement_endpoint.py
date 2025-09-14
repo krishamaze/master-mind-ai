@@ -30,4 +30,4 @@ class EnhancementEndpointTests(SimpleTestCase):
         self.assertEqual(
             json.loads(response.content), {"enhanced_prompt": "improved"}
         )
-        mock_enhance.assert_called_once_with("hello")
+        mock_enhance.assert_called_once_with("hello", user_id=None)

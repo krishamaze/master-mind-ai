@@ -35,7 +35,12 @@ class Conversation(models.Model):
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    embedding = VectorField(dimensions=1536, null=True, blank=True, help_text="Vector representation for semantic search")
+    content_embedding = VectorField(
+        dimensions=1536,
+        null=True,
+        blank=True,
+        help_text="Vector representation for semantic search",
+    )
 
     class Meta:
         ordering = ["-created_at"]

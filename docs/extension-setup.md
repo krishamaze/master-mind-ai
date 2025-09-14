@@ -26,6 +26,7 @@ Update `API_BASE_URL` and related secrets in Render dashboard:
 ## Background Worker Behavior
 - The background script checks backend health on startup and when the extension is installed.
 - Saved conversations automatically include an ISO timestamp in their request payload.
+- Configure the user ID in the popup to isolate memories per user.
 
 ## Testing Procedures
 - Run Jest tests for the extension:

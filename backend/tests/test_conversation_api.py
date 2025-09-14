@@ -22,9 +22,13 @@ class ConversationAPITests(SimpleTestCase):
 
     @patch("api.views.MemoryService.search_memories", return_value=[{"content": "hi"}])
     def test_search_returns_results(self, mock_search) -> None:
-        request = self.factory.post("/conversations/search/", {"query": "hi"}, format="json")
+        request = self.factory.post(
+            "/conversations/search/", {"query": "hi", "user_id": "user1"}, format="json"
+        )
         view = ConversationViewSet.as_view({"post": "search"})
         response = view(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [{"content": "hi"}])
-        mock_search.assert_called_once_with("hi", limit=5)
+        mock_search.assert_called_once_with(
+            "hi", limit=5, filters={"user_id": "user1"}
+        )

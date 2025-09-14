@@ -67,9 +67,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
         query = request.data.get("query")
         if not query:
             return Response({"detail": "query is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         limit = int(request.data.get("limit", 5))
+        user_id = request.data.get("user_id")
+        filters = {"user_id": user_id} if user_id else None
+
         try:
-            results = MemoryService().search_memories(query, limit=limit)
+            results = MemoryService().search_memories(
+                query, limit=limit, filters=filters
+            )
             return Response(results)
         except Exception as exc:  # pragma: no cover - external dependency
             logger.error("Memory search failed: %s", exc)

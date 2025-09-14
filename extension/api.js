@@ -56,11 +56,12 @@ class APIClient {
     });
   }
 
-  enhancePrompt(payload) {
-    const enhancedPayload = {
-      prompt: payload.prompt,
-      user_id: 'testuser'  // Add user_id for Mem0 API requirement
-    };
+  async enhancePrompt(payload) {
+    const { userId } = await getSettings();
+    const enhancedPayload = { prompt: payload.prompt };
+    if (userId) {
+      enhancedPayload.user_id = userId;
+    }
 
     return this.request('/api/v1/prompts/enhance/', {
       method: 'POST',
@@ -68,10 +69,15 @@ class APIClient {
     });
   }
 
-  searchMemory(payload) {
+  async searchMemory(payload) {
+    const { userId } = await getSettings();
+    const body = { ...payload };
+    if (userId) {
+      body.user_id = userId;
+    }
     return this.request('/api/v1/conversations/search/', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     });
   }
 }

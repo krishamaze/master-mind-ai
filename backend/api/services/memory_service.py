@@ -53,10 +53,9 @@ class MemoryService:
         """Retrieve memories similar to the query."""
         if not self.client:
             return []
-
-        # Ensure filters exist for Mem0 API requirement
-        if not filters:
-            filters = {"user_id": "testuser"}
+        # Mem0 requires a user_id filter; return empty if missing
+        if not filters or "user_id" not in filters:
+            return []
 
         return self.client.search(
             query,
@@ -67,7 +66,10 @@ class MemoryService:
 
     def _prepend_memories(self, prompt: str, *, limit: int = 5, user_id: Optional[str] = None) -> str:
         """Fallback enhancement by prepending retrieved memories."""
-        filters = {"user_id": user_id} if user_id else {"user_id": "testuser"}
+        if not user_id:
+            return prompt
+
+        filters = {"user_id": user_id}
         memories = self.search_memories(prompt, limit=limit, filters=filters)
         
         context: List[str] = []
@@ -88,11 +90,8 @@ class MemoryService:
 
         If chat completion fails, falls back to simple memory prepending.
         """
-        if not self.client:
+        if not self.client or not user_id:
             return prompt
-
-        # Use provided user_id or fallback to testuser
-        effective_user_id = user_id or "testuser"
 
         try:
             response = self.client.chat.completions.create(
@@ -108,7 +107,7 @@ class MemoryService:
                 ],
                 include_memories=True,
                 limit=3,
-                user_id=effective_user_id,
+                user_id=user_id,
             )
 
             enhanced = (
@@ -119,6 +118,6 @@ class MemoryService:
             )
 
             return enhanced or prompt
-        except Exception as exc: # pragma: no cover - external dependency
+        except Exception as exc:  # pragma: no cover - external dependency
             logger.error("Mem0 chat completion failed: %s", exc)
-            return self._prepend_memories(prompt, limit=limit, user_id=effective_user_id)
+            return self._prepend_memories(prompt, limit=limit, user_id=user_id)
