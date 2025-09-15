@@ -134,6 +134,9 @@ MEM0_API_BASE_URL = config("MEM0_API_BASE_URL", default="https://api.mem0.ai")
 MEM0_PROVIDER = config("MEM0_PROVIDER", default="supabase")
 MEM0_EMBEDDING_DIM = config("MEM0_EMBEDDING_DIM", cast=int, default=1536)
 MEM0_INDEX_METHOD = config("MEM0_INDEX_METHOD", default="hnsw")
+MEM0_USE_PROXY_CLIENT = config("MEM0_USE_PROXY_CLIENT", cast=bool, default=True)
+MEM0_CHAT_MODEL = config("MEM0_CHAT_MODEL", default="gpt-4o-mini")
+MEM0_CHAT_TEMPERATURE = config("MEM0_CHAT_TEMPERATURE", cast=float, default=0.0)
 
 ENVIRONMENT = config("ENVIRONMENT", default="development")
 CORS_ALLOW_CREDENTIALS = True

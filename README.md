@@ -16,8 +16,10 @@ Browser Extension → Django API → Mem0 Memory Layer
 
 ## Quick Start Guide
 1. Clone the repository.
-2. Copy `env.example` to `.env` and update values.
-3. Install backend dependencies and run migrations:
+2. Copy `env.example` to `.env` and update values. The Mem0 proxy client can be
+   toggled with the `MEM0_USE_PROXY_CLIENT` flag and chat completions are
+   configurable via `MEM0_CHAT_MODEL` and `MEM0_CHAT_TEMPERATURE`.
+3. Install backend dependencies and run migrations (Mem0.ai SDK pinned at `0.1.117`):
    ```bash
    cd backend
    pip install -r requirements.txt
@@ -28,6 +30,9 @@ Browser Extension → Django API → Mem0 Memory Layer
    python manage.py runserver
    ```
 5. Load the browser extension in developer mode.
+
+For upgrading existing deployments, see the migration guide at
+[`docs/mem0-migration.md`](docs/mem0-migration.md).
 
 ## File Structure
 See [`docs/file-structure.md`](docs/file-structure.md) for an overview of repository files and directories.
@@ -40,8 +45,8 @@ Deployment steps and security practices are described in [`docs/deployment.md`](
 
 - `GET /api/v1/health/` – Service health check
 - `POST /api/v1/conversations/` – Store a conversation
-- `POST /api/v1/conversations/search/` – Search stored memories
-- `POST /api/v1/prompts/enhance/` – Enhance a prompt with relevant memories (accepts `prompt` and optional `user_id`)
+- `POST /api/v1/conversations/search/` – Search stored memories (requires `query` and `user_id`)
+- `POST /api/v1/prompts/enhance/` – Enhance a prompt with relevant memories (requires `prompt` and `user_id`)
 
 ## Technology Stack
 - Django
