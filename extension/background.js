@@ -1,4 +1,5 @@
 import { apiClient } from './api.js';
+import { getSettings } from './config.js';
 
 let healthStatus = { ok: false };
 
@@ -61,16 +62,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'enhance') {
     console.log('🚀 Enhancing prompt:', msg.prompt?.slice(0, 50) + '...');
-    apiClient
-      .enhancePrompt({ prompt: msg.prompt })
-      .then(data => {
-        console.log('✅ Prompt enhanced successfully');
-        sendResponse({ success: true, data });
-      })
-      .catch(error => {
-        console.error('❌ Failed to enhance prompt:', error.message);
-        sendResponse({ success: false, error: error.message });
-      });
+    getSettings().then(({ userId }) => {
+      const payload = { prompt: msg.prompt };
+      if (userId) payload.user_id = userId;
+      apiClient
+        .enhancePrompt(payload)
+        .then(data => {
+          console.log('✅ Prompt enhanced successfully');
+          sendResponse({ success: true, data });
+        })
+        .catch(error => {
+          console.error('❌ Failed to enhance prompt:', error.message);
+          sendResponse({ success: false, error: error.message });
+        });
+    });
     return true;
   }
 

@@ -57,10 +57,14 @@ class APIClient {
   }
 
   async enhancePrompt(payload) {
-    const { userId } = await getSettings();
     const enhancedPayload = { prompt: payload.prompt };
-    if (userId) {
-      enhancedPayload.user_id = userId;
+    if (payload.user_id) {
+      enhancedPayload.user_id = payload.user_id;
+    } else {
+      const { userId } = await getSettings();
+      if (userId) {
+        enhancedPayload.user_id = userId;
+      }
     }
 
     return this.request('/api/v1/prompts/enhance/', {

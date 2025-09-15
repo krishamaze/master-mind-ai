@@ -26,24 +26,27 @@
     console.log('🔍 Platform config:', platform, selectors);
 
     function handleEnhance() {
-      console.log('🚀 Enhancement process started');
-      const el = button.target;
-      if (!el) return;
+      return new Promise(resolve => {
+        console.log('🚀 Enhancement process started');
+        const el = button.target;
+        if (!el) return resolve();
 
-      const prompt = TextReplacementManager.getText(el);
-      if (!prompt.trim()) return;
+        const prompt = TextReplacementManager.getText(el);
+        if (!prompt.trim()) return resolve();
 
-      ui.showLoading();
+        ui.showLoading();
 
-      chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
-        ui.hide();
-        const enhanced = res?.data?.enhanced_prompt;
-        if (!enhanced) {
-          ui.showError('Enhancement failed. Please try again.');
-          return;
-        }
-        TextReplacementManager.setText(el, enhanced);
-        console.log('✅ Text replaced');
+        chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
+          ui.hide();
+          const enhanced = res?.data?.enhanced_prompt;
+          if (!enhanced) {
+            ui.showError('Enhancement failed. Please try again.');
+            return resolve();
+          }
+          TextReplacementManager.setText(el, enhanced);
+          console.log('✅ Text replaced');
+          resolve();
+        });
       });
     }
 
