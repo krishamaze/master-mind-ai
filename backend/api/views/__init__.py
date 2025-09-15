@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from ..models import Conversation, Project, UserProfile
 from ..serializers import ConversationSerializer, ProjectSerializer, UserProfileSerializer
 from ..services.memory_service import MemoryService
+from mem0.client.utils import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -58,25 +59,31 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation = serializer.save()
         metadata = {"conversation_id": str(conversation.id), "user_id": conversation.user_id}
         try:
-            MemoryService().add_memory(conversation.content, metadata)
+            MemoryService().add_memory(
+                conversation.content, metadata, user_id=str(conversation.user_id)
+            )
         except Exception as exc:  # pragma: no cover - external dependency
             logger.error("Failed to store memory: %s", exc)
 
     @action(detail=False, methods=["post"], url_path="search")
     def search(self, request) -> Response:  # type: ignore[override]
         query = request.data.get("query")
+        user_id = request.data.get("user_id")
         if not query:
             return Response({"detail": "query is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not user_id:
+            return Response({"detail": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         limit = int(request.data.get("limit", 5))
-        user_id = request.data.get("user_id")
-        filters = {"user_id": user_id} if user_id else None
 
         try:
             results = MemoryService().search_memories(
-                query, limit=limit, filters=filters
+                query, limit=limit, user_id=user_id, filters=None
             )
             return Response(results)
+        except APIError as exc:  # pragma: no cover - external dependency
+            logger.error("Memory search failed: %s", exc)
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pragma: no cover - external dependency
             logger.error("Memory search failed: %s", exc)
             return Response({"detail": "search failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
