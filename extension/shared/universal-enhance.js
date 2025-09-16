@@ -81,7 +81,10 @@ export class UniversalEnhanceSystem {
 
     const elementNodeType = typeof Node !== 'undefined' ? Node.ELEMENT_NODE : 1;
     const validElements = elements.filter(
-      el => el && el.nodeType === elementNodeType
+      el =>
+        el &&
+        el.nodeType === elementNodeType &&
+        typeof el.dataset !== 'undefined'
     );
 
     if (!validElements.length) {
@@ -90,6 +93,7 @@ export class UniversalEnhanceSystem {
 
     console.log(`📝 Attaching enhance button to ${validElements.length} elements`);
     validElements.forEach(el => {
+      // Guard against elements without dataset support or already processed nodes.
       if (!el.dataset || el.dataset.mmEnhanceBound) {
         return;
       }
