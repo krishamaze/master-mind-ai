@@ -34,6 +34,11 @@
       "matches": ["https://gemini.google.com/*"],
       "js": ["content/gemini.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://perplexity.ai/*"],
+      "js": ["content/perplexity.js"],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [{
@@ -41,14 +46,16 @@
       "https://chat.openai.com/*",
       "https://chatgpt.com/*",
       "https://claude.ai/*",
-      "https://gemini.google.com/*"
+      "https://gemini.google.com/*",
+      "https://perplexity.ai/*"
     ],
     "resources": [
       "shared/dom-observer.js",
-      "shared/platform-config.js", 
+      "shared/platform-config.js",
       "shared/floating-enhance-button.js",
       "shared/text-replacement-manager.js",
-      "shared/enhancement-ui.js"
+      "shared/enhancement-ui.js",
+      "shared/universal-enhance.js"
     ]
   }]
 }
