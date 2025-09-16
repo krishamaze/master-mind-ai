@@ -10,6 +10,7 @@ export class UniversalEnhanceSystem {
     this.ui = null;
     this.textManager = null;
     this.initialized = false;
+    this.attachDebounced = this.debounce(this.attachToElements.bind(this), 100);
   }
 
   async initialize() {
@@ -78,9 +79,18 @@ export class UniversalEnhanceSystem {
       return;
     }
 
-    console.log(`📝 Attaching enhance button to ${elements.length} elements`);
-    elements.forEach(el => {
-      if (!el || el.dataset.mmEnhanceBound) {
+    const elementNodeType = typeof Node !== 'undefined' ? Node.ELEMENT_NODE : 1;
+    const validElements = elements.filter(
+      el => el && el.nodeType === elementNodeType
+    );
+
+    if (!validElements.length) {
+      return;
+    }
+
+    console.log(`📝 Attaching enhance button to ${validElements.length} elements`);
+    validElements.forEach(el => {
+      if (!el.dataset || el.dataset.mmEnhanceBound) {
         return;
       }
 
@@ -88,6 +98,18 @@ export class UniversalEnhanceSystem {
       this.button.attach(el);
       console.log('🎯 Button attached universally');
     });
+  }
+
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 }
 

@@ -30,7 +30,7 @@
     });
 
     observer.subscribe('input-detection', elements => {
-      enhanceSystem.attachToElements(elements);
+      enhanceSystem.attachDebounced(elements);
     });
 
     observer.start();
