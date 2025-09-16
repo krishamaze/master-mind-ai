@@ -195,13 +195,6 @@ class MemoryService:
             params: Dict[str, Any] = {
                 "model": model,
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "Enhance the user's prompt with relevant context from their memory. "
-                            "Return ONLY the enhanced prompt."
-                        ),
-                    },
                     {"role": "user", "content": prompt},
                 ],
                 "limit": limit,
