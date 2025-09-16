@@ -5,23 +5,39 @@ const PLATFORM_CONFIG = {
       'conversation-capture': 'main .markdown',
       'input-detection': 'div#prompt-textarea[contenteditable="true"], .ProseMirror[contenteditable="true"]',
       'message-updates': 'main .markdown'
-    }
+    },
+    placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
   },
+
   claude: {
     matches: [/claude\.ai/],
     selectors: {
       'conversation-capture': '[data-testid="conversation-message"]',
       'input-detection': 'textarea, [contenteditable="true"]',
       'message-updates': '[data-testid="conversation-message"]'
-    }
+    },
+    placement: { strategy: 'float', placement: 'right-start', gap: 8 }
   },
+
   gemini: {
     matches: [/gemini\.google\.com/],
     selectors: {
       'conversation-capture': '[data-message-id]',
       'input-detection': 'textarea',
       'message-updates': '[data-message-id]'
-    }
+    },
+    placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
+  },
+
+  perplexity: {
+    matches: [/perplexity\.ai/],
+    selectors: {
+      'conversation-capture': '[data-testid="conversation-turn"], .conversation-item',
+      'input-detection': 'textarea[placeholder*="Ask"], textarea[id="ask-input"], [contenteditable="true"]',
+      'message-updates': '[data-testid="conversation-turn"], .conversation-item',
+      'submit-button': 'button[aria-label="Submit"]'
+    },
+    placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
   }
 };
 
@@ -32,7 +48,14 @@ export function detectPlatform(url = window.location.href) {
 }
 
 export function getPlatformConfig(platform = detectPlatform()) {
-  return { platform, selectors: PLATFORM_CONFIG[platform]?.selectors || {} };
+  const config = PLATFORM_CONFIG[platform];
+  if (!config) return { platform, selectors: {}, placement: null };
+
+  return {
+    platform,
+    selectors: config.selectors || {},
+    placement: config.placement || null
+  };
 }
 
 export { PLATFORM_CONFIG };
