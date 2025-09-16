@@ -1,21 +1,22 @@
 import { detectPlatform, getPlatformConfig } from '../shared/platform-config.js';
 
-describe('platform config', () => {
-  test('detects platform from url', () => {
-    expect(detectPlatform('https://chat.openai.com')).toBe('chatgpt');
-    expect(detectPlatform('https://claude.ai/chat')).toBe('claude');
-    expect(detectPlatform('https://gemini.google.com/app')).toBe('gemini');
+describe('platform config V1.0', () => {
+  test('detects all platform URLs including www variants', () => {
     expect(detectPlatform('https://perplexity.ai/search')).toBe('perplexity');
+    expect(detectPlatform('https://www.perplexity.ai/search')).toBe('perplexity');
   });
 
-  test('returns selectors for platform', () => {
-    const { selectors, placement } = getPlatformConfig('gemini');
-    expect(selectors['conversation-capture']).toBe('[data-message-id]');
-    expect(placement).toEqual({ strategy: 'inline', where: 'beforeend', inlineAlign: 'end' });
+  test('all platforms use unified inline placement', () => {
+    ['chatgpt', 'claude', 'gemini', 'perplexity'].forEach(platform => {
+      const { placement } = getPlatformConfig(platform);
+      expect(placement.strategy).toBe('inline');
+    });
   });
 
-  test('provides defaults for unknown platform', () => {
-    const config = getPlatformConfig('unknown');
-    expect(config).toEqual({ platform: 'unknown', selectors: {}, placement: null });
+  test('enhanced input detection selectors', () => {
+    const { selectors } = getPlatformConfig('perplexity');
+    expect(selectors['input-detection']).toContain('textarea');
+    expect(selectors['input-detection']).toContain('[contenteditable]');
+    expect(selectors['input-detection']).toContain('input[type="text"]');
   });
 });

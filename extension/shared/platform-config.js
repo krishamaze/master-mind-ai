@@ -3,7 +3,7 @@ const PLATFORM_CONFIG = {
     matches: [/chat\.openai\.com/, /chatgpt\.com/],
     selectors: {
       'conversation-capture': 'main .markdown',
-      'input-detection': 'div#prompt-textarea[contenteditable="true"], .ProseMirror[contenteditable="true"]',
+      'input-detection': 'textarea, [contenteditable="true"], input[type="text"]',
       'message-updates': 'main .markdown'
     },
     placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
@@ -13,27 +13,27 @@ const PLATFORM_CONFIG = {
     matches: [/claude\.ai/],
     selectors: {
       'conversation-capture': '[data-testid="conversation-message"]',
-      'input-detection': 'textarea, [contenteditable="true"]',
+      'input-detection': 'div[contenteditable="true"], textarea, p[data-placeholder], [contenteditable="true"]',
       'message-updates': '[data-testid="conversation-message"]'
     },
-    placement: { strategy: 'float', placement: 'right-start', gap: 8 }
+    placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
   },
 
   gemini: {
     matches: [/gemini\.google\.com/],
     selectors: {
       'conversation-capture': '[data-message-id]',
-      'input-detection': 'textarea',
+      'input-detection': 'textarea, [contenteditable="true"], input[type="text"]',
       'message-updates': '[data-message-id]'
     },
     placement: { strategy: 'inline', where: 'beforeend', inlineAlign: 'end' }
   },
 
   perplexity: {
-    matches: [/perplexity\.ai/],
+    matches: [/perplexity\.ai/, /www\.perplexity\.ai/],
     selectors: {
       'conversation-capture': '[data-testid="conversation-turn"], .conversation-item',
-      'input-detection': 'textarea[placeholder*="Ask"], textarea[id="ask-input"], [contenteditable="true"]',
+      'input-detection': 'textarea, [contenteditable], input[type="text"]',
       'message-updates': '[data-testid="conversation-turn"], .conversation-item',
       'submit-button': 'button[aria-label="Submit"]'
     },

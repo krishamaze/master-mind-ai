@@ -1,34 +1,53 @@
 export default class TextReplacementManager {
-  static getText(el) {
-    if (!el) return '';
-    if ('value' in el) return el.value;
-    if (el.isContentEditable || el.contentEditable === 'true') {
-      return el.innerText || el.textContent || '';
+  static getText(element) {
+    if (!element) return '';
+
+    if (element.tagName === 'TEXTAREA') {
+      return element.value || '';
+    } else if (element.contentEditable === 'true') {
+      const paragraph = element.querySelector('p[dir="ltr"]');
+      if (paragraph) {
+        let text = '';
+        paragraph.childNodes.forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            text += node.textContent || '';
+          } else if (node.tagName === 'SPAN' && node.getAttribute('data-lexical-text')) {
+            text += node.textContent || '';
+          } else if (node.tagName === 'BR') {
+            text += '\n';
+          }
+        });
+        return text;
+      }
+      return element.textContent || '';
     }
-    return '';
+    return element.textContent || element.value || '';
   }
 
-  static setText(el, text) {
-    if (!el) return;
-    if ('value' in el) {
-      el.value = text;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    } else if (el.isContentEditable || el.contentEditable === 'true') {
-      // For contenteditable elements like ChatGPT
-      el.innerHTML = `<p>${text}</p>`;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // Set cursor to end
-      const range = document.createRange();
-      const sel = window.getSelection();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }
+  static setText(element, text) {
+    if (!element) return;
 
-  static hasMinimumText(el, min = 10) {
-    return this.getText(el).trim().length >= min;
+    if (element.tagName === 'TEXTAREA') {
+      element.value = text;
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (element.contentEditable === 'true') {
+      element.focus();
+      document.execCommand('selectAll', false, '');
+
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            document.execCommand('paste');
+          })
+          .catch(() => {
+            element.textContent = text;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+      } else {
+        element.textContent = text;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
   }
 }
