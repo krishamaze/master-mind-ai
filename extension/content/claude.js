@@ -4,14 +4,18 @@
     
     const [
       { default: DOMObserver },
-      { getPlatformConfig }
+      { getPlatformConfig },
+      { UniversalEnhanceSystem }
     ] = await Promise.all([
       import(chrome.runtime.getURL('shared/dom-observer.js')),
-      import(chrome.runtime.getURL('shared/platform-config.js'))
+      import(chrome.runtime.getURL('shared/platform-config.js')),
+      import(chrome.runtime.getURL('shared/universal-enhance.js'))
     ]);
 
     const { platform, selectors } = getPlatformConfig('claude');
     const observer = new DOMObserver(selectors);
+    const enhanceSystem = new UniversalEnhanceSystem(platform, selectors);
+    await enhanceSystem.initialize();
 
     observer.subscribe('conversation-capture', () => {
       const nodes = document.querySelectorAll(selectors['conversation-capture']);
@@ -26,28 +30,7 @@
     });
 
     observer.subscribe('input-detection', elements => {
-      elements.forEach(el => {
-        if (el.dataset.mmEnhanceBound) return;
-        el.dataset.mmEnhanceBound = 'true';
-        
-        el.addEventListener('keydown', e => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-            const prompt = el.value || el.textContent || '';
-            if (!prompt.trim()) return;
-            
-            chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
-              if (res?.success && res.data?.enhanced_prompt) {
-                if ('value' in el) {
-                  el.value = res.data.enhanced_prompt;
-                } else {
-                  el.textContent = res.data.enhanced_prompt;
-                }
-              }
-            });
-            e.preventDefault();
-          }
-        });
-      });
+      enhanceSystem.attachToElements(elements);
     });
 
     observer.start();

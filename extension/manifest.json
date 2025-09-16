@@ -45,10 +45,11 @@
     ],
     "resources": [
       "shared/dom-observer.js",
-      "shared/platform-config.js", 
+      "shared/platform-config.js",
       "shared/floating-enhance-button.js",
       "shared/text-replacement-manager.js",
-      "shared/enhancement-ui.js"
+      "shared/enhancement-ui.js",
+      "shared/universal-enhance.js"
     ]
   }]
 }
