@@ -1,6 +1,6 @@
 (async () => {
   try {
-    console.log('🚀 Loading Gemini content script...');
+    console.log('🚀 Loading Perplexity content script...');
     
     const [
       { default: DOMObserver },
@@ -12,7 +12,7 @@
       import(chrome.runtime.getURL('shared/universal-enhance.js'))
     ]);
 
-    const { platform, selectors, placement } = getPlatformConfig('gemini');
+    const { platform, selectors, placement } = getPlatformConfig('perplexity');
     const observer = new DOMObserver(selectors);
     const enhanceSystem = new UniversalEnhanceSystem(platform, selectors, placement);
     await enhanceSystem.initialize();
@@ -34,9 +34,9 @@
     });
 
     observer.start();
-    console.log('✅ Gemini content script loaded');
+    console.log('✅ Perplexity content script loaded');
 
   } catch (error) {
-    console.error('❌ Failed to load Gemini content script:', error);
+    console.error('❌ Failed to load Perplexity content script:', error);
   }
 })();

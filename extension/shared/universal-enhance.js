@@ -1,11 +1,11 @@
 /**
  * Universal Enhancement System for Master Mind AI
- * Ensures a consistent floating enhance button experience across platforms.
  */
 export class UniversalEnhanceSystem {
-  constructor(platform, selectors) {
+  constructor(platform, selectors, placement = null) {
     this.platform = platform;
     this.selectors = selectors;
+    this.placement = placement;
     this.button = null;
     this.ui = null;
     this.textManager = null;
@@ -33,13 +33,13 @@ export class UniversalEnhanceSystem {
     this.textManager = TextReplacementManager;
     this.initialized = true;
 
-    console.log(`🔧 Universal enhance system initialized for ${this.platform}`);
+    console.log(`\uD83D\uDD27 Universal enhance system initialized for ${this.platform}`);
     return true;
   }
 
   handleEnhance() {
     return new Promise(resolve => {
-      console.log('🚀 Universal enhancement started');
+      console.log('\uD83D\uDE80 Universal enhancement started');
       const el = this.button?.target;
       if (!el) {
         return resolve();
@@ -68,7 +68,7 @@ export class UniversalEnhanceSystem {
         }
 
         this.textManager?.setText(el, enhanced);
-        console.log('✅ Universal enhancement completed');
+        console.log('\u2705 Universal enhancement completed');
         resolve();
       });
     });
@@ -81,29 +81,51 @@ export class UniversalEnhanceSystem {
 
     const elementNodeType = typeof Node !== 'undefined' ? Node.ELEMENT_NODE : 1;
     const validElements = elements.filter(
-      el =>
-        el &&
-        el.nodeType === elementNodeType &&
-        typeof el.dataset !== 'undefined'
+      el => el && el.nodeType === elementNodeType
     );
 
     if (!validElements.length) {
       return;
     }
 
-    console.log(`📝 Attaching enhance button to ${validElements.length} elements`);
+    console.log(`\uD83D\uDCDD Attaching enhance button to ${validElements.length} elements on ${this.platform}`);
     validElements.forEach(el => {
-      // Guard against elements without dataset support or already processed nodes.
       if (!el.dataset || el.dataset.mmEnhanceBound) {
         return;
       }
 
       el.dataset.mmEnhanceBound = 'true';
+
+      if (this.placement) {
+        this.applyPlacement(el);
+      }
+
       this.button.attach(el);
-      console.log('🎯 Button attached universally');
+      console.log(`\uD83C\uDFAF Button attached to ${this.platform} with placement:`, this.placement?.strategy || 'default');
     });
   }
 
+  applyPlacement(element) {
+    if (!this.placement || !this.button) return;
+
+    const buttonEl = this.button.element || this.button.button || null;
+    if (!buttonEl) return;
+
+    switch (this.placement.strategy) {
+      case 'float':
+        buttonEl.style.setProperty('position', 'absolute');
+        if (this.placement.gap) {
+          buttonEl.style.setProperty('margin', `${this.placement.gap}px`);
+        }
+        break;
+
+      case 'inline':
+        if (this.placement.inlineAlign === 'end') {
+          buttonEl.style.setProperty('margin-left', 'auto');
+        }
+        break;
+    }
+  }
   debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {

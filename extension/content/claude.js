@@ -12,9 +12,9 @@
       import(chrome.runtime.getURL('shared/universal-enhance.js'))
     ]);
 
-    const { platform, selectors } = getPlatformConfig('claude');
+    const { platform, selectors, placement } = getPlatformConfig('claude');
     const observer = new DOMObserver(selectors);
-    const enhanceSystem = new UniversalEnhanceSystem(platform, selectors);
+    const enhanceSystem = new UniversalEnhanceSystem(platform, selectors, placement);
     await enhanceSystem.initialize();
 
     observer.subscribe('conversation-capture', () => {

@@ -4,6 +4,7 @@ export default class FloatingEnhanceButton {
     this.button = document.createElement('button');
     this.button.textContent = 'Enhance';
     this.button.id = 'mm-enhance-btn'; // Add ID for debugging
+    this.element = this.button;
     
     Object.assign(this.button.style, {
       position: 'absolute',
