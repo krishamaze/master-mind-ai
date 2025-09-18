@@ -1,6 +1,8 @@
 // Centralized DOM Mutation Observer with subscriber support
 // Observes DOM changes and notifies registered callbacks for specific event types.
 
+import { clearRunId as clearGlobalRunId, setRunId as setGlobalRunId } from './thread-context.js';
+
 export class DOMObserver {
   constructor(selectors = {}) {
     this.selectors = selectors; // { eventType: cssSelector }
@@ -75,7 +77,7 @@ export class DOMObserver {
     this.callbacks = {};
     this.debouncers = {};
     this._detachInputListeners();
-    this.currentRunId = null;
+    this.clearCurrentRunId();
     this.conversationContainer = null;
     this.conversationHasMessages = false;
   }
@@ -215,19 +217,24 @@ export class DOMObserver {
     return this.currentRunId;
   }
 
-  setCurrentRunId(runId) {
-    this.currentRunId = runId;
-    return this.currentRunId;
-  }
-
   clearCurrentRunId() {
+    if (this.currentRunId === null) {
+      return;
+    }
     this.currentRunId = null;
+    clearGlobalRunId();
   }
 
   generateNewRunId() {
     const newRunId = `thread_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this.setCurrentRunId(newRunId);
     return newRunId;
+  }
+
+  setCurrentRunId(runId) {
+    this.currentRunId = runId;
+    setGlobalRunId(runId);
+    return this.currentRunId;
   }
 }
 

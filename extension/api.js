@@ -56,20 +56,10 @@ class APIClient {
     });
   }
 
-  async enhancePrompt(payload) {
-    const enhancedPayload = { prompt: payload.prompt };
-    if (payload.user_id) {
-      enhancedPayload.user_id = payload.user_id;
-    } else {
-      const { userId } = await getSettings();
-      if (userId) {
-        enhancedPayload.user_id = userId;
-      }
-    }
-
+  enhancePrompt(payload) {
     return this.request('/api/v1/prompts/enhance/', {
       method: 'POST',
-      body: JSON.stringify(enhancedPayload)
+      body: JSON.stringify(payload)
     });
   }
 
