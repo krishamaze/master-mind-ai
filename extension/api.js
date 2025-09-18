@@ -1,14 +1,10 @@
 import { getSettings } from './config.js';
 
 class APIClient {
-  async request(path, { method = 'GET', body } = {}) {
-    const { apiBaseUrl, apiToken } = await getSettings();
-    const url = `${apiBaseUrl}${path}`;
+  async request(path, { method = 'GET', body, baseUrl } = {}) {
+    const { apiBaseUrl } = await getSettings();
+    const url = `${baseUrl ?? apiBaseUrl}${path}`;
     const headers = { 'Content-Type': 'application/json' };
-
-    if (apiToken) {
-      headers['Authorization'] = `Bearer ${apiToken}`;
-    }
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -47,6 +43,10 @@ class APIClient {
 
   healthCheck() {
     return this.request('/api/v1/health/');
+  }
+
+  fetchProjects(baseUrl) {
+    return this.request('/api/v1/projects/', { baseUrl });
   }
 
   saveConversation(payload) {
