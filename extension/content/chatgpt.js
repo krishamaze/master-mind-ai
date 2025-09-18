@@ -44,7 +44,7 @@
       try {
         const { projectId } = await getSettings();
         if (projectId) {
-          message.session_id = projectId;
+          message.app_id = projectId;
         }
       } catch (error) {
         console.warn('Failed to load project settings for ChatGPT enhancement', error);

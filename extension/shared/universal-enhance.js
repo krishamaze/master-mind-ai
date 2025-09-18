@@ -54,18 +54,18 @@ export class UniversalEnhanceSystem {
 
     this.ui?.showLoading();
 
-    let sessionId = '';
+    let appId = '';
     try {
       const { projectId } = await getSettings();
-      sessionId = projectId || '';
+      appId = projectId || '';
     } catch (error) {
       console.warn('Unable to load project settings for enhancement', error);
     }
 
     const runId = getRunId();
     const message = { type: 'enhance', prompt };
-    if (sessionId) {
-      message.session_id = sessionId;
+    if (appId) {
+      message.app_id = appId;
     }
     if (runId) {
       message.run_id = runId;
