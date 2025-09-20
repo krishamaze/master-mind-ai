@@ -60,6 +60,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === 'console-logs') {
+    console.log('📝 Forwarding console logs to backend', msg.payload?.entries?.length ?? 0);
+    apiClient
+      .request(msg.endpoint ?? '/api/debug-logs/', {
+        method: 'POST',
+        body: JSON.stringify({
+          platform: msg.payload?.platform,
+          page_url: msg.payload?.pageUrl,
+          first_logged_at: msg.payload?.firstLoggedAt,
+          entries: msg.payload?.entries ?? []
+        })
+      })
+      .then(data => {
+        console.log('✅ Console logs forwarded successfully');
+        sendResponse({ success: true, data });
+      })
+      .catch(error => {
+        console.error('❌ Failed to forward console logs:', error.message);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
   if (msg.type === 'enhance') {
     console.log('🚀 Enhancing prompt:', msg.prompt?.slice(0, 50) + '...');
     handleEnhancement(msg.prompt, msg.app_id, msg.run_id)
