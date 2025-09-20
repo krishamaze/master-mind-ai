@@ -11,6 +11,20 @@ input {
   width: 100%;
   box-sizing: border-box;
 }
+
+select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin-bottom: 8px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+}
 button {
   margin-top: 10px;
 }

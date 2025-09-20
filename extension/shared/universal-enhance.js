@@ -1,6 +1,9 @@
 /**
  * Universal Enhancement System for Master Mind AI
  */
+import { getSettings } from '../config.js';
+import { getRunId } from './thread-context.js';
+
 export class UniversalEnhanceSystem {
   constructor(platform, selectors, placement = null) {
     this.platform = platform;
@@ -37,22 +40,39 @@ export class UniversalEnhanceSystem {
     return true;
   }
 
-  handleEnhance() {
+  async handleEnhance() {
+    console.log('🚀 Universal enhancement started');
+    const el = this.button?.target;
+    if (!el) {
+      return;
+    }
+
+    const prompt = this.textManager?.getText(el) ?? '';
+    if (!prompt.trim()) {
+      return;
+    }
+
+    this.ui?.showLoading();
+
+    let appId = '';
+    try {
+      const { projectId } = await getSettings();
+      appId = projectId || '';
+    } catch (error) {
+      console.warn('Unable to load project settings for enhancement', error);
+    }
+
+    const runId = getRunId();
+    const message = { type: 'enhance', prompt };
+    if (appId) {
+      message.app_id = appId;
+    }
+    if (runId) {
+      message.run_id = runId;
+    }
+
     return new Promise(resolve => {
-      console.log('🚀 Universal enhancement started');
-      const el = this.button?.target;
-      if (!el) {
-        return resolve();
-      }
-
-      const prompt = this.textManager?.getText(el) ?? '';
-      if (!prompt.trim()) {
-        return resolve();
-      }
-
-      this.ui?.showLoading();
-
-      chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
+      chrome.runtime.sendMessage(message, res => {
         this.ui?.hide();
 
         if (chrome.runtime.lastError) {

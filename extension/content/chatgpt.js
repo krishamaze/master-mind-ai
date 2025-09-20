@@ -7,13 +7,17 @@
       { getPlatformConfig },
       { default: FloatingEnhanceButton },
       { default: TextReplacementManager },
-      { default: EnhancementUI }
+      { default: EnhancementUI },
+      { getRunId },
+      { getSettings }
     ] = await Promise.all([
       import(chrome.runtime.getURL('shared/dom-observer.js')),
       import(chrome.runtime.getURL('shared/platform-config.js')),
       import(chrome.runtime.getURL('shared/floating-enhance-button.js')),
       import(chrome.runtime.getURL('shared/text-replacement-manager.js')),
-      import(chrome.runtime.getURL('shared/enhancement-ui.js'))
+      import(chrome.runtime.getURL('shared/enhancement-ui.js')),
+      import(chrome.runtime.getURL('shared/thread-context.js')),
+      import(chrome.runtime.getURL('config.js'))
     ]);
 
     console.log('✅ All modules loaded successfully');
@@ -25,18 +29,34 @@
 
     console.log('🔍 Platform config:', platform, selectors);
 
-    function handleEnhance() {
+    async function handleEnhance() {
+      console.log('🚀 Enhancement process started');
+      const el = button.target;
+      if (!el) return;
+
+      const prompt = TextReplacementManager.getText(el);
+      if (!prompt.trim()) return;
+
+      ui.showLoading();
+
+      const message = { type: 'enhance', prompt };
+
+      try {
+        const { projectId } = await getSettings();
+        if (projectId) {
+          message.app_id = projectId;
+        }
+      } catch (error) {
+        console.warn('Failed to load project settings for ChatGPT enhancement', error);
+      }
+
+      const runId = getRunId();
+      if (runId) {
+        message.run_id = runId;
+      }
+
       return new Promise(resolve => {
-        console.log('🚀 Enhancement process started');
-        const el = button.target;
-        if (!el) return resolve();
-
-        const prompt = TextReplacementManager.getText(el);
-        if (!prompt.trim()) return resolve();
-
-        ui.showLoading();
-
-        chrome.runtime.sendMessage({ type: 'enhance', prompt }, res => {
+        chrome.runtime.sendMessage(message, res => {
           ui.hide();
           const enhanced = res?.data?.enhanced_prompt;
           if (!enhanced) {
