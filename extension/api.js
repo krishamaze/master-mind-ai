@@ -45,8 +45,9 @@ class APIClient {
     return this.request('/api/v1/health/');
   }
 
-  fetchProjects(baseUrl) {
-    return this.request('/api/v1/projects/', { baseUrl });
+  fetchProjects(baseUrl, userId) {
+    const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+    return this.request(`/api/v1/projects/${query}`, { baseUrl });
   }
 
   saveConversation(payload) {
@@ -57,15 +58,30 @@ class APIClient {
   }
 
   enhancePrompt(payload) {
+    const body = { ...payload };
+
+    if (body.userid && !body.user_id) {
+      body.user_id = body.userid;
+    }
+
+    delete body.userid;
+
     return this.request('/api/v1/prompts/enhance/', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     });
   }
 
   async searchMemory(payload) {
     const { userId } = await getSettings();
     const body = { ...payload };
+
+    if (body.userid && !body.user_id) {
+      body.user_id = body.userid;
+    }
+
+    delete body.userid;
+
     if (userId) {
       body.user_id = userId;
     }

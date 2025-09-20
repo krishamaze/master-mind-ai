@@ -81,7 +81,11 @@ export class UniversalEnhanceSystem {
           return resolve();
         }
 
-        const enhanced = res?.data?.enhanced_prompt;
+        const enhanced =
+          res?.data?.enhanced_prompt ??
+          res?.data?.enhancedprompt ??
+          res?.enhanced_prompt ??
+          res?.enhancedprompt;
         if (!enhanced) {
           this.ui?.showError('Enhancement failed. Please try again.');
           return resolve();

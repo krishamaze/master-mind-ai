@@ -28,19 +28,27 @@ function showStatus(message, isError = false) {
 }
 
 function updateSaveButtonState() {
-  saveButton.disabled = projectEl.disabled || !projectEl.value;
+  const userId = userIdEl.value.trim();
+  saveButton.disabled = projectEl.disabled || !projectEl.value || !userId;
 }
 
 async function loadProjects(selectedProjectId = '') {
   const environment = envEl.value;
   const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
+  const userId = userIdEl.value.trim();
 
   projectEl.disabled = true;
+  if (!userId) {
+    projectEl.innerHTML = '<option value="">Enter user ID to load projects</option>';
+    updateSaveButtonState();
+    return;
+  }
+
   projectEl.innerHTML = '<option value="">Loading projects...</option>';
   updateSaveButtonState();
 
   try {
-    const response = await apiClient.fetchProjects(baseUrl);
+    const response = await apiClient.fetchProjects(baseUrl, userId);
     const projects = Array.isArray(response) ? response : response?.results || [];
 
     projectEl.innerHTML = '<option value="">Select project...</option>';
@@ -108,7 +116,7 @@ projectEl.addEventListener('change', () => {
 });
 
 saveButton.addEventListener('click', () => {
-  if (!projectEl.value) {
+  if (!projectEl.value || !userIdEl.value.trim()) {
     updateSaveButtonState();
     return;
   }
@@ -122,4 +130,12 @@ saveButton.addEventListener('click', () => {
       console.error('Failed to save settings', error);
       showStatus('Failed to save settings', true);
     });
+});
+
+userIdEl.addEventListener('blur', () => {
+  loadProjects(projectEl.value);
+});
+
+userIdEl.addEventListener('input', () => {
+  updateSaveButtonState();
 });

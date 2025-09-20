@@ -58,7 +58,11 @@
       return new Promise(resolve => {
         chrome.runtime.sendMessage(message, res => {
           ui.hide();
-          const enhanced = res?.data?.enhanced_prompt;
+          const enhanced =
+            res?.data?.enhanced_prompt ??
+            res?.data?.enhancedprompt ??
+            res?.enhanced_prompt ??
+            res?.enhancedprompt;
           if (!enhanced) {
             ui.showError('Enhancement failed. Please try again.');
             return resolve();
