@@ -1,14 +1,10 @@
 import { getSettings } from './config.js';
 
 class APIClient {
-  async request(path, { method = 'GET', body } = {}) {
-    const { apiBaseUrl, apiToken } = await getSettings();
-    const url = `${apiBaseUrl}${path}`;
+  async request(path, { method = 'GET', body, baseUrl } = {}) {
+    const { apiBaseUrl } = await getSettings();
+    const url = `${baseUrl ?? apiBaseUrl}${path}`;
     const headers = { 'Content-Type': 'application/json' };
-
-    if (apiToken) {
-      headers['Authorization'] = `Bearer ${apiToken}`;
-    }
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -49,6 +45,11 @@ class APIClient {
     return this.request('/api/v1/health/');
   }
 
+  fetchProjects(baseUrl, userId) {
+    const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+    return this.request(`/api/v1/projects/${query}`, { baseUrl });
+  }
+
   saveConversation(payload) {
     return this.request('/api/v1/conversations/', {
       method: 'POST',
@@ -56,26 +57,31 @@ class APIClient {
     });
   }
 
-  async enhancePrompt(payload) {
-    const enhancedPayload = { prompt: payload.prompt };
-    if (payload.user_id) {
-      enhancedPayload.user_id = payload.user_id;
-    } else {
-      const { userId } = await getSettings();
-      if (userId) {
-        enhancedPayload.user_id = userId;
-      }
+  enhancePrompt(payload) {
+    const body = { ...payload };
+
+    if (body.userid && !body.user_id) {
+      body.user_id = body.userid;
     }
+
+    delete body.userid;
 
     return this.request('/api/v1/prompts/enhance/', {
       method: 'POST',
-      body: JSON.stringify(enhancedPayload)
+      body: JSON.stringify(body)
     });
   }
 
   async searchMemory(payload) {
     const { userId } = await getSettings();
     const body = { ...payload };
+
+    if (body.userid && !body.user_id) {
+      body.user_id = body.userid;
+    }
+
+    delete body.userid;
+
     if (userId) {
       body.user_id = userId;
     }
