@@ -48,7 +48,18 @@
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [{
+"web_accessible_resources": [
+  {
+    "resources": [
+      "shared/dom-observer.js",
+      "shared/platform-config.js",
+      "shared/floating-enhance-button.js",
+      "shared/text-replacement-manager.js",
+      "shared/enhancement-ui.js",
+      "shared/universal-enhance.js",
+      "shared/thread-context.js",
+      "config.js"
+    ],
     "matches": [
       "https://chat.openai.com/*",
       "https://chatgpt.com/*",
@@ -56,14 +67,7 @@
       "https://gemini.google.com/*",
       "https://perplexity.ai/*",
       "https://www.perplexity.ai/*"
-    ],
-    "resources": [
-      "shared/dom-observer.js",
-      "shared/platform-config.js",
-      "shared/floating-enhance-button.js",
-      "shared/text-replacement-manager.js",
-      "shared/enhancement-ui.js",
-      "shared/universal-enhance.js"
     ]
-  }]
+  }
+]
 }
