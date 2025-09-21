@@ -10,6 +10,7 @@
     -H "Content-Type: application/json" \
     -d '{"platform":"chatgpt","entries":[{"level":"log","timestamp":"2024-01-01T00:00:00Z","messages":["test"]}]}'
   ```
+- Optional: set `OPENAI_API_KEY` to allow automatic console error analysis responses in the API logs.
 
 ## Browser Extension
 - Install Node dependencies: `cd extension && npm install`
