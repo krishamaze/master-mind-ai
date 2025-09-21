@@ -10,6 +10,7 @@ const connectionEl = document.getElementById('connection');
 const saveButton = document.getElementById('save');
 const newProjectContainer = document.getElementById('new-project-container');
 const newProjectInput = document.getElementById('new-project-name');
+const newProjectFeedback = document.getElementById('new-project-feedback');
 
 const ADD_NEW_PROJECT_OPTION = '__add_new_project__';
 const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load projects';
@@ -53,13 +54,107 @@ function hideNewProjectInput() {
   if (newProjectInput) {
     newProjectInput.value = '';
   }
+  setProjectNameFeedback('');
+}
+
+function setProjectNameFeedback(message = '') {
+  if (!newProjectFeedback) {
+    return;
+  }
+
+  if (message) {
+    newProjectFeedback.textContent = message;
+    newProjectFeedback.hidden = false;
+  } else {
+    newProjectFeedback.textContent = '';
+    newProjectFeedback.hidden = true;
+  }
+}
+
+function validateProjectName(name) {
+  const rawName = name ?? '';
+  const trimmedName = rawName.trim();
+
+  if (!trimmedName) {
+    return { valid: false, message: 'Enter a project name to continue.', normalizedName: '' };
+  }
+
+  if (/\s/.test(rawName)) {
+    return { valid: false, message: 'Project name cannot contain spaces.', normalizedName: '' };
+  }
+
+  if (!/^[A-Za-z0-9]+$/.test(trimmedName)) {
+    return { valid: false, message: 'Project name must be alphanumeric.', normalizedName: '' };
+  }
+
+  if (trimmedName.length < 8) {
+    return {
+      valid: false,
+      message: 'Project name must be at least 8 characters.',
+      normalizedName: ''
+    };
+  }
+
+  return { valid: true, message: '', normalizedName: trimmedName };
+}
+
+function extractErrorMessage(error) {
+  if (!error) {
+    return '';
+  }
+
+  const baseMessage = typeof error === 'string' ? error : error.message;
+  if (!baseMessage) {
+    return '';
+  }
+
+  const trimmedMessage = baseMessage.trim();
+
+  if (!trimmedMessage) {
+    return '';
+  }
+
+  if (trimmedMessage.startsWith('{') || trimmedMessage.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmedMessage);
+      if (typeof parsed === 'string') {
+        return parsed;
+      }
+      if (Array.isArray(parsed)) {
+        return parsed.join(', ');
+      }
+      if (parsed?.detail) {
+        return parsed.detail;
+      }
+      if (parsed?.message) {
+        return parsed.message;
+      }
+    } catch (parseError) {
+      console.warn('Unable to parse error message JSON', parseError);
+    }
+  }
+
+  return trimmedMessage;
+}
+
+function getFriendlyErrorMessage(error, fallback) {
+  if (error instanceof TypeError || error?.message?.includes('Failed to fetch')) {
+    return 'Network error. Please check your connection and try again.';
+  }
+
+  const extracted = extractErrorMessage(error);
+  if (extracted) {
+    return extracted;
+  }
+
+  return fallback;
 }
 
 function updateSaveButtonState() {
   const userId = userIdEl.value.trim();
   const selectedProject = projectEl.value;
   const isAddingNewProject = selectedProject === ADD_NEW_PROJECT_OPTION;
-  const newProjectName = newProjectInput?.value.trim() ?? '';
+  const newProjectName = newProjectInput?.value ?? '';
 
   if (!userId) {
     saveButton.disabled = true;
@@ -74,11 +169,14 @@ function updateSaveButtonState() {
   }
 
   if (isAddingNewProject) {
-    saveButton.disabled = !newProjectName;
+    const { valid, message } = validateProjectName(newProjectName);
+    setProjectNameFeedback(message);
+    saveButton.disabled = !valid;
     saveButton.textContent = 'Create Project';
     return;
   }
 
+  setProjectNameFeedback('');
   saveButton.disabled = !selectedProject;
   saveButton.textContent = 'Save';
 }
@@ -95,7 +193,7 @@ async function loadProjects(selectedProjectId = '') {
     setProjectPlaceholder('Save user ID to load projects');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
-    return;
+    return [];
   }
 
   toggleProjectLoading(true);
@@ -103,10 +201,11 @@ async function loadProjects(selectedProjectId = '') {
   updateSaveButtonState();
 
   let loaded = false;
+  let projects = [];
 
   try {
     const response = await apiClient.fetchProjects(baseUrl, userId);
-    const projects = Array.isArray(response) ? response : response?.results || [];
+    projects = Array.isArray(response) ? response : response?.results || [];
 
     setProjectPlaceholder('Select project...');
 
@@ -137,10 +236,13 @@ async function loadProjects(selectedProjectId = '') {
     showStatus(`Loaded ${projects.length} project${projects.length === 1 ? '' : 's'}`);
     loaded = true;
     projectEl.disabled = false;
+    return projects;
   } catch (error) {
     console.error('Failed to load projects', error);
     setProjectPlaceholder('Select project...');
-    showStatus('Failed to load projects', true);
+    const message = getFriendlyErrorMessage(error, 'Unable to load projects. Please try again.');
+    showStatus(message, true, { persist: true });
+    return [];
   } finally {
     toggleProjectLoading(false);
     projectEl.disabled = !loaded;
@@ -236,33 +338,49 @@ saveButton.addEventListener('click', async () => {
     }
 
     if (isAddingNewProject) {
-      const newProjectName = newProjectInput?.value.trim() ?? '';
-
-      if (!newProjectName) {
-        showStatus('Enter a project name to continue.', true);
+      const rawProjectName = newProjectInput?.value ?? '';
+      const { valid, message, normalizedName } = validateProjectName(rawProjectName);
+      if (!valid) {
+        setProjectNameFeedback(message);
+        showStatus(message, true, { persist: true });
         return;
       }
-
+      setProjectNameFeedback('');
       showStatus('Creating project...', false, { persist: true });
       const createdProject = await apiClient.createProject(baseUrl, {
-        name: newProjectName,
+        name: normalizedName,
         user_id: userId
       });
 
       const createdProjectId = createdProject?.id ? String(createdProject.id) : '';
+      const createdProjectName = createdProject?.name ?? normalizedName;
       hideNewProjectInput();
 
-      await loadProjects(createdProjectId);
+      const projects = await loadProjects(createdProjectId);
 
-      if (createdProjectId) {
-        await setSettings({ environment, userId, projectId: createdProjectId });
+      let projectIdToSave = createdProjectId;
+      if (!projectIdToSave && projects.length) {
+        const matched = projects.find(project => project?.name === createdProjectName);
+        if (matched?.id) {
+          projectIdToSave = String(matched.id);
+          projectEl.value = projectIdToSave;
+        }
+      }
+
+      if (projectIdToSave) {
+        await setSettings({ environment, userId, projectId: projectIdToSave });
+        projectEl.value = projectIdToSave;
+        showStatus('Project created and saved.', false);
       } else {
         await setSettings({ environment, userId, projectId: '' });
+        showStatus('Project created but could not be auto-selected. Please choose it manually.', true, {
+          persist: true
+        });
+        return;
       }
 
       userIdSaved = true;
 
-      showStatus('Project created and saved.', false);
       updateConnection();
       return;
     }
@@ -278,7 +396,10 @@ saveButton.addEventListener('click', async () => {
     updateConnection();
   } catch (error) {
     console.error('Failed to save settings', error);
-    showStatus('Failed to save settings', true);
+    const errorMessage = isAddingNewProject
+      ? getFriendlyErrorMessage(error, 'Unable to create project. Please try again.')
+      : getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
+    showStatus(errorMessage, true, { persist: true });
   } finally {
     updateSaveButtonState();
   }
