@@ -11,6 +11,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from ..serializers import ConsoleLogBatchSerializer
+from ..services.error_analysis import (
+    ErrorAnalysisConfigurationError,
+    analyze_console_errors,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +61,33 @@ def ingest_console_logs(request) -> Response:
             "Console log entry",
             extra=_build_entry_metadata(entry, platform, page_url),
         )
+
+    error_entries = [
+        entry for entry in entries if entry.get("level", "").lower() == "error"
+    ]
+    if error_entries:
+        try:
+            analysis = analyze_console_errors(
+                error_entries,
+                platform=platform,
+                page_url=page_url,
+                first_logged_at=first_logged_at,
+            )
+            logger.info(
+                "Console error analysis completed",
+                extra={
+                    "platform": platform,
+                    "page_url": page_url,
+                    "analysis": analysis,
+                },
+            )
+        except ErrorAnalysisConfigurationError:
+            logger.debug(
+                "Skipping console error analysis; OpenAI configuration not available",
+                extra={"platform": platform, "page_url": page_url},
+            )
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.exception("Console error analysis failed: %s", exc)
 
     return Response(
         {"status": "accepted", "entries": len(entries)},

@@ -138,6 +138,13 @@ MEM0_USE_PROXY_CLIENT = config("MEM0_USE_PROXY_CLIENT", cast=bool, default=True)
 MEM0_CHAT_MODEL = config("MEM0_CHAT_MODEL", default="gpt-4o-mini")
 MEM0_CHAT_TEMPERATURE = config("MEM0_CHAT_TEMPERATURE", cast=float, default=0.0)
 
+# OpenAI configuration for console error analysis
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+OPENAI_ERROR_MODEL = config("OPENAI_ERROR_MODEL", default="gpt-4o-mini")
+OPENAI_ERROR_TEMPERATURE = config(
+    "OPENAI_ERROR_TEMPERATURE", cast=float, default=0.0
+)
+
 ENVIRONMENT = config("ENVIRONMENT", default="development")
 CORS_ALLOW_CREDENTIALS = True
 
