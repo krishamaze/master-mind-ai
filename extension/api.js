@@ -50,6 +50,14 @@ class APIClient {
     return this.request(`/api/v1/projects/${query}`, { baseUrl });
   }
 
+  createProject(baseUrl, payload) {
+    return this.request('/api/v1/projects/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      baseUrl
+    });
+  }
+
   saveConversation(payload) {
     return this.request('/api/v1/conversations/', {
       method: 'POST',

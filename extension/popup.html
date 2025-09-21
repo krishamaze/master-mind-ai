@@ -15,9 +15,14 @@
   </label>
   <div class="form-group">
     <label for="project-select">Project:</label>
-    <select id="project-select" required>
-      <option value="">Select project...</option>
+    <select id="project-select" required disabled>
+      <option value="">Save user ID to load projects</option>
     </select>
+    <div id="project-loading" class="loading-indicator" hidden>Loading projects...</div>
+  </div>
+  <div class="form-group" id="new-project-container" hidden>
+    <label for="new-project-name">New project name</label>
+    <input id="new-project-name" type="text" placeholder="Project name" />
   </div>
   <label>User ID
     <input id="userId" type="text" placeholder="user" />
