@@ -6,21 +6,30 @@ export const ENVIRONMENTS = {
 export function getSettings() {
   return new Promise(resolve => {
     chrome.storage.sync.get(
-      { environment: 'production', userId: '', projectId: '' },
-      ({ environment, userId, projectId }) => {
+      { environment: 'production', userId: '', assignmentId: '', projectId: '' },
+      ({ environment, userId, assignmentId, projectId }) => {
+        const normalizedAssignmentId = assignmentId || projectId || '';
         resolve({
           apiBaseUrl: ENVIRONMENTS[environment] || ENVIRONMENTS.production,
           environment,
           userId,
-          projectId
+          assignmentId: normalizedAssignmentId
         });
       }
     );
   });
 }
 
-export function setSettings({ environment, userId, projectId }) {
+export function setSettings({ environment, userId, assignmentId }) {
   return new Promise(resolve => {
-    chrome.storage.sync.set({ environment, userId, projectId }, resolve);
+    chrome.storage.sync.set(
+      {
+        environment,
+        userId,
+        assignmentId,
+        projectId: assignmentId
+      },
+      resolve
+    );
   });
 }

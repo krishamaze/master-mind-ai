@@ -45,13 +45,13 @@ class APIClient {
     return this.request('/api/v1/health/');
   }
 
-  fetchProjects(baseUrl, userId) {
+  fetchAssignments(baseUrl, userId) {
     const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
-    return this.request(`/api/v1/projects/${query}`, { baseUrl });
+    return this.request(`/api/v1/assignments/${query}`, { baseUrl });
   }
 
-  createProject(baseUrl, payload) {
-    return this.request('/api/v1/projects/', {
+  createAssignment(baseUrl, payload) {
+    return this.request('/api/v1/assignments/', {
       method: 'POST',
       body: JSON.stringify(payload),
       baseUrl

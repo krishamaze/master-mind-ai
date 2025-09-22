@@ -56,10 +56,10 @@ export class UniversalEnhanceSystem {
 
     let appId = '';
     try {
-      const { projectId } = await getSettings();
-      appId = projectId || '';
+      const { assignmentId } = await getSettings();
+      appId = assignmentId || '';
     } catch (error) {
-      console.warn('Unable to load project settings for enhancement', error);
+      console.warn('Unable to load assignment settings for enhancement', error);
     }
 
     const runId = getRunId();

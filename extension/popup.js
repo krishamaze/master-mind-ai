@@ -2,18 +2,18 @@ import { ENVIRONMENTS, getSettings, setSettings } from './config.js';
 import { apiClient } from './api.js';
 
 const envEl = document.getElementById('environment');
-const projectEl = document.getElementById('project-select');
-const projectLoadingEl = document.getElementById('project-loading');
+const assignmentEl = document.getElementById('assignment-select');
+const assignmentLoadingEl = document.getElementById('assignment-loading');
 const userIdEl = document.getElementById('userId');
 const statusEl = document.getElementById('status');
 const connectionEl = document.getElementById('connection');
 const saveButton = document.getElementById('save');
-const newProjectContainer = document.getElementById('new-project-container');
-const newProjectInput = document.getElementById('new-project-name');
-const newProjectFeedback = document.getElementById('new-project-feedback');
+const newAssignmentContainer = document.getElementById('new-assignment-container');
+const newAssignmentInput = document.getElementById('new-assignment-name');
+const newAssignmentFeedback = document.getElementById('new-assignment-feedback');
 
-const ADD_NEW_PROJECT_OPTION = '__add_new_project__';
-const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load projects';
+const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
+const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load assignments';
 
 let statusTimeoutId;
 let userIdSaved = false;
@@ -35,62 +35,62 @@ function showStatus(message, isError = false, { persist = false } = {}) {
   }
 }
 
-function setProjectPlaceholder(message) {
-  projectEl.innerHTML = `<option value="">${message}</option>`;
-  projectEl.value = '';
+function setAssignmentPlaceholder(message) {
+  assignmentEl.innerHTML = `<option value="">${message}</option>`;
+  assignmentEl.value = '';
 }
 
-function toggleProjectLoading(isLoading) {
-  if (projectLoadingEl) {
-    projectLoadingEl.hidden = !isLoading;
+function toggleAssignmentLoading(isLoading) {
+  if (assignmentLoadingEl) {
+    assignmentLoadingEl.hidden = !isLoading;
   }
-  projectEl.classList.toggle('loading', isLoading);
+  assignmentEl.classList.toggle('loading', isLoading);
 }
 
-function hideNewProjectInput() {
-  if (newProjectContainer) {
-    newProjectContainer.hidden = true;
+function hideNewAssignmentInput() {
+  if (newAssignmentContainer) {
+    newAssignmentContainer.hidden = true;
   }
-  if (newProjectInput) {
-    newProjectInput.value = '';
+  if (newAssignmentInput) {
+    newAssignmentInput.value = '';
   }
-  setProjectNameFeedback('');
+  setAssignmentNameFeedback('');
 }
 
-function setProjectNameFeedback(message = '') {
-  if (!newProjectFeedback) {
+function setAssignmentNameFeedback(message = '') {
+  if (!newAssignmentFeedback) {
     return;
   }
 
   if (message) {
-    newProjectFeedback.textContent = message;
-    newProjectFeedback.hidden = false;
+    newAssignmentFeedback.textContent = message;
+    newAssignmentFeedback.hidden = false;
   } else {
-    newProjectFeedback.textContent = '';
-    newProjectFeedback.hidden = true;
+    newAssignmentFeedback.textContent = '';
+    newAssignmentFeedback.hidden = true;
   }
 }
 
-function validateProjectName(name) {
+function validateAssignmentName(name) {
   const rawName = name ?? '';
   const trimmedName = rawName.trim();
 
   if (!trimmedName) {
-    return { valid: false, message: 'Enter a project name to continue.', normalizedName: '' };
+    return { valid: false, message: 'Enter an assignment name to continue.', normalizedName: '' };
   }
 
   if (/\s/.test(rawName)) {
-    return { valid: false, message: 'Project name cannot contain spaces.', normalizedName: '' };
+    return { valid: false, message: 'Assignment name cannot contain spaces.', normalizedName: '' };
   }
 
   if (!/^[A-Za-z0-9]+$/.test(trimmedName)) {
-    return { valid: false, message: 'Project name must be alphanumeric.', normalizedName: '' };
+    return { valid: false, message: 'Assignment name must be alphanumeric.', normalizedName: '' };
   }
 
   if (trimmedName.length < 8) {
     return {
       valid: false,
-      message: 'Project name must be at least 8 characters.',
+      message: 'Assignment name must be at least 8 characters.',
       normalizedName: ''
     };
   }
@@ -152,9 +152,9 @@ function getFriendlyErrorMessage(error, fallback) {
 
 function updateSaveButtonState() {
   const userId = userIdEl.value.trim();
-  const selectedProject = projectEl.value;
-  const isAddingNewProject = selectedProject === ADD_NEW_PROJECT_OPTION;
-  const newProjectName = newProjectInput?.value ?? '';
+  const selectedAssignment = assignmentEl.value;
+  const isAddingNewAssignment = selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION;
+  const newAssignmentName = newAssignmentInput?.value ?? '';
 
   if (!userId) {
     saveButton.disabled = true;
@@ -162,90 +162,92 @@ function updateSaveButtonState() {
     return;
   }
 
-  if (projectEl.disabled) {
+  if (assignmentEl.disabled) {
     saveButton.disabled = false;
     saveButton.textContent = 'Save User ID';
     return;
   }
 
-  if (isAddingNewProject) {
-    const { valid, message } = validateProjectName(newProjectName);
-    setProjectNameFeedback(message);
+  if (isAddingNewAssignment) {
+    const { valid, message } = validateAssignmentName(newAssignmentName);
+    setAssignmentNameFeedback(message);
     saveButton.disabled = !valid;
-    saveButton.textContent = 'Create Project';
+    saveButton.textContent = 'Create Assignment';
     return;
   }
 
-  setProjectNameFeedback('');
-  saveButton.disabled = !selectedProject;
+  setAssignmentNameFeedback('');
+  saveButton.disabled = !selectedAssignment;
   saveButton.textContent = 'Save';
 }
 
-async function loadProjects(selectedProjectId = '') {
+async function loadAssignments(selectedAssignmentId = '') {
   const environment = envEl.value;
   const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
   const userId = userIdEl.value.trim();
 
-  hideNewProjectInput();
-  projectEl.disabled = true;
+  hideNewAssignmentInput();
+  assignmentEl.disabled = true;
   if (!userId) {
-    toggleProjectLoading(false);
-    setProjectPlaceholder('Save user ID to load projects');
+    toggleAssignmentLoading(false);
+    setAssignmentPlaceholder('Save user ID to load assignments');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
     return [];
   }
 
-  toggleProjectLoading(true);
-  setProjectPlaceholder('Loading projects...');
+  toggleAssignmentLoading(true);
+  setAssignmentPlaceholder('Loading assignments...');
   updateSaveButtonState();
 
   let loaded = false;
-  let projects = [];
+  let assignments = [];
 
   try {
-    const response = await apiClient.fetchProjects(baseUrl, userId);
-    projects = Array.isArray(response) ? response : response?.results || [];
+    const response = await apiClient.fetchAssignments(baseUrl, userId);
+    assignments = Array.isArray(response) ? response : response?.results || [];
 
-    setProjectPlaceholder('Select project...');
+    setAssignmentPlaceholder('Choose assignment...');
 
-    projects.forEach(project => {
+    assignments.forEach(assignment => {
       const option = document.createElement('option');
-      option.value = String(project.id);
-      option.textContent = project.name;
-      projectEl.appendChild(option);
+      option.value = String(assignment.id);
+      option.textContent = assignment.name;
+      assignmentEl.appendChild(option);
     });
 
     const addOption = document.createElement('option');
-    addOption.value = ADD_NEW_PROJECT_OPTION;
-    addOption.textContent = 'Add New Project';
-    projectEl.appendChild(addOption);
+    addOption.value = ADD_NEW_ASSIGNMENT_OPTION;
+    addOption.textContent = 'Add New Assignment';
+    assignmentEl.appendChild(addOption);
 
-    if (selectedProjectId) {
-      const matched = projects.find(project => String(project.id) === String(selectedProjectId));
+    if (selectedAssignmentId) {
+      const matched = assignments.find(
+        assignment => String(assignment.id) === String(selectedAssignmentId)
+      );
       if (matched) {
-        projectEl.value = String(matched.id);
+        assignmentEl.value = String(matched.id);
       } else {
-        projectEl.value = '';
-        showStatus('Saved project is unavailable. Please choose another project.', true);
+        assignmentEl.value = '';
+        showStatus('Saved assignment is unavailable. Please choose another assignment.', true);
       }
     } else {
-      projectEl.value = '';
+      assignmentEl.value = '';
     }
 
-    showStatus(`Loaded ${projects.length} project${projects.length === 1 ? '' : 's'}`);
+    showStatus(`Loaded ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}`);
     loaded = true;
-    projectEl.disabled = false;
-    return projects;
+    assignmentEl.disabled = false;
+    return assignments;
   } catch (error) {
-    console.error('Failed to load projects', error);
-    setProjectPlaceholder('Select project...');
-    const message = getFriendlyErrorMessage(error, 'Unable to load projects. Please try again.');
+    console.error('Failed to load assignments', error);
+    setAssignmentPlaceholder('Choose assignment...');
+    const message = getFriendlyErrorMessage(error, 'Unable to load assignments. Please try again.');
     showStatus(message, true, { persist: true });
     return [];
   } finally {
-    toggleProjectLoading(false);
-    projectEl.disabled = !loaded;
+    toggleAssignmentLoading(false);
+    assignmentEl.disabled = !loaded;
     updateSaveButtonState();
   }
 }
@@ -260,15 +262,15 @@ async function updateConnection() {
 }
 
 async function init() {
-  const { environment, userId, projectId } = await getSettings();
+  const { environment, userId, assignmentId } = await getSettings();
   envEl.value = environment;
   userIdEl.value = userId;
   userIdSaved = Boolean(userId);
 
   if (userId) {
-    await loadProjects(projectId);
+    await loadAssignments(assignmentId);
   } else {
-    setProjectPlaceholder('Save user ID to load projects');
+    setAssignmentPlaceholder('Save user ID to load assignments');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
   }
 
@@ -279,34 +281,34 @@ async function init() {
 init();
 
 envEl.addEventListener('change', () => {
-  hideNewProjectInput();
+  hideNewAssignmentInput();
 
   if (userIdSaved) {
-    const selectedProjectId =
-      projectEl.value && projectEl.value !== ADD_NEW_PROJECT_OPTION ? projectEl.value : '';
-    loadProjects(selectedProjectId);
+    const selectedAssignmentId =
+      assignmentEl.value && assignmentEl.value !== ADD_NEW_ASSIGNMENT_OPTION ? assignmentEl.value : '';
+    loadAssignments(selectedAssignmentId);
   } else {
-    setProjectPlaceholder('Save user ID to load projects');
+    setAssignmentPlaceholder('Save user ID to load assignments');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
   }
 });
 
-projectEl.addEventListener('change', () => {
-  const isAddingNewProject = projectEl.value === ADD_NEW_PROJECT_OPTION;
+assignmentEl.addEventListener('change', () => {
+  const isAddingNewAssignment = assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION;
 
-  if (isAddingNewProject) {
-    if (newProjectContainer) {
-      newProjectContainer.hidden = false;
+  if (isAddingNewAssignment) {
+    if (newAssignmentContainer) {
+      newAssignmentContainer.hidden = false;
     }
-    if (newProjectInput) {
-      newProjectInput.focus();
+    if (newAssignmentInput) {
+      newAssignmentInput.focus();
     }
   } else {
     if (statusEl.style.color === 'red' && statusEl.textContent) {
       showStatus('');
     }
-    hideNewProjectInput();
+    hideNewAssignmentInput();
   }
 
   updateSaveButtonState();
@@ -322,58 +324,58 @@ saveButton.addEventListener('click', async () => {
 
   const environment = envEl.value;
   const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
-  const selectedProject = projectEl.value;
-  const isAddingNewProject = selectedProject === ADD_NEW_PROJECT_OPTION;
+  const selectedAssignment = assignmentEl.value;
+  const isAddingNewAssignment = selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION;
 
   saveButton.disabled = true;
 
   try {
-    if (projectEl.disabled) {
-      await setSettings({ environment, userId, projectId: '' });
+    if (assignmentEl.disabled) {
+      await setSettings({ environment, userId, assignmentId: '' });
       userIdSaved = true;
-      showStatus('User ID saved. Loading projects...', false, { persist: true });
-      await loadProjects();
+      showStatus('User ID saved. Loading assignments...', false, { persist: true });
+      await loadAssignments();
       updateConnection();
       return;
     }
 
-    if (isAddingNewProject) {
-      const rawProjectName = newProjectInput?.value ?? '';
-      const { valid, message, normalizedName } = validateProjectName(rawProjectName);
+    if (isAddingNewAssignment) {
+      const rawAssignmentName = newAssignmentInput?.value ?? '';
+      const { valid, message, normalizedName } = validateAssignmentName(rawAssignmentName);
       if (!valid) {
-        setProjectNameFeedback(message);
+        setAssignmentNameFeedback(message);
         showStatus(message, true, { persist: true });
         return;
       }
-      setProjectNameFeedback('');
-      showStatus('Creating project...', false, { persist: true });
-      const createdProject = await apiClient.createProject(baseUrl, {
+      setAssignmentNameFeedback('');
+      showStatus('Creating assignment...', false, { persist: true });
+      const createdAssignment = await apiClient.createAssignment(baseUrl, {
         name: normalizedName,
         user_id: userId
       });
 
-      const createdProjectId = createdProject?.id ? String(createdProject.id) : '';
-      const createdProjectName = createdProject?.name ?? normalizedName;
-      hideNewProjectInput();
+      const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
+      const createdAssignmentName = createdAssignment?.name ?? normalizedName;
+      hideNewAssignmentInput();
 
-      const projects = await loadProjects(createdProjectId);
+      const assignments = await loadAssignments(createdAssignmentId);
 
-      let projectIdToSave = createdProjectId;
-      if (!projectIdToSave && projects.length) {
-        const matched = projects.find(project => project?.name === createdProjectName);
+      let assignmentIdToSave = createdAssignmentId;
+      if (!assignmentIdToSave && assignments.length) {
+        const matched = assignments.find(assignment => assignment?.name === createdAssignmentName);
         if (matched?.id) {
-          projectIdToSave = String(matched.id);
-          projectEl.value = projectIdToSave;
+          assignmentIdToSave = String(matched.id);
+          assignmentEl.value = assignmentIdToSave;
         }
       }
 
-      if (projectIdToSave) {
-        await setSettings({ environment, userId, projectId: projectIdToSave });
-        projectEl.value = projectIdToSave;
-        showStatus('Project created and saved.', false);
+      if (assignmentIdToSave) {
+        await setSettings({ environment, userId, assignmentId: assignmentIdToSave });
+        assignmentEl.value = assignmentIdToSave;
+        showStatus('Assignment created and saved.', false);
       } else {
-        await setSettings({ environment, userId, projectId: '' });
-        showStatus('Project created but could not be auto-selected. Please choose it manually.', true, {
+        await setSettings({ environment, userId, assignmentId: '' });
+        showStatus('Assignment created but could not be auto-selected. Please choose it manually.', true, {
           persist: true
         });
         return;
@@ -385,19 +387,19 @@ saveButton.addEventListener('click', async () => {
       return;
     }
 
-    if (!selectedProject) {
-      showStatus('Select a project to save.', true);
+    if (!selectedAssignment) {
+      showStatus('Select an assignment to save.', true);
       return;
     }
 
-    await setSettings({ environment, userId, projectId: selectedProject });
+    await setSettings({ environment, userId, assignmentId: selectedAssignment });
     userIdSaved = true;
     showStatus('Saved');
     updateConnection();
   } catch (error) {
     console.error('Failed to save settings', error);
-    const errorMessage = isAddingNewProject
-      ? getFriendlyErrorMessage(error, 'Unable to create project. Please try again.')
+    const errorMessage = isAddingNewAssignment
+      ? getFriendlyErrorMessage(error, 'Unable to create assignment. Please try again.')
       : getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
     showStatus(errorMessage, true, { persist: true });
   } finally {
@@ -407,16 +409,16 @@ saveButton.addEventListener('click', async () => {
 
 userIdEl.addEventListener('input', () => {
   userIdSaved = false;
-  hideNewProjectInput();
-  setProjectPlaceholder('Save user ID to load projects');
-  toggleProjectLoading(false);
-  projectEl.disabled = true;
+  hideNewAssignmentInput();
+  setAssignmentPlaceholder('Save user ID to load assignments');
+  toggleAssignmentLoading(false);
+  assignmentEl.disabled = true;
   if (statusEl.textContent !== USER_ID_PROMPT_MESSAGE) {
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
   }
   updateSaveButtonState();
 });
 
-newProjectInput?.addEventListener('input', () => {
+newAssignmentInput?.addEventListener('input', () => {
   updateSaveButtonState();
 });

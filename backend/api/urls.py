@@ -3,8 +3,8 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AssignmentViewSet,
     ConversationViewSet,
-    ProjectViewSet,
     UserProfileViewSet,
     health_check,
 )
@@ -12,7 +12,7 @@ from .views.enhancement import enhance_prompt
 
 router = DefaultRouter()
 router.register(r"users", UserProfileViewSet, basename="userprofile")
-router.register(r"projects", ProjectViewSet, basename="project")
+router.register(r"assignments", AssignmentViewSet, basename="assignment")
 router.register(r"conversations", ConversationViewSet, basename="conversation")
 
 urlpatterns = [

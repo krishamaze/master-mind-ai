@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import Conversation, Project, UserProfile
+from .models import Assignment, Conversation, UserProfile
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -14,11 +14,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "bio"]
 
 
-class ProjectSerializer(serializers.ModelSerializer):
-    """Serializer for projects."""
+class AssignmentSerializer(serializers.ModelSerializer):
+    """Serializer for assignments."""
 
     class Meta:
-        model = Project
+        model = Assignment
         fields = ["id", "name", "owner"]
 
 
@@ -30,7 +30,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "user",
-            "project",
+            "assignment",
             "content",
             "created_at",
             "content_embedding",
