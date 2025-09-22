@@ -22,7 +22,7 @@ class Assignment(models.Model):
     """Assignment grouping conversations."""
 
     name = models.CharField(max_length=255)
-    owner = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="assignments")
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignments")
     app_id = models.CharField(
         max_length=8,
         unique=True,
@@ -43,7 +43,7 @@ class Assignment(models.Model):
 class Conversation(models.Model):
     """Stored conversation text and embeddings."""
 
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="conversations")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="conversations")
     assignment = models.ForeignKey(
         Assignment,
         on_delete=models.CASCADE,

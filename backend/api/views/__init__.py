@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Iterable, List, Optional
 
+from django.contrib.auth import get_user_model
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -18,6 +19,7 @@ from ..services.assignment_summary import summarize_memories
 from ..services.memory_service import MemoryService
 from mem0.client.utils import APIError
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +54,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):  # type: ignore[override]
         queryset = super().get_queryset()
-        self._resolved_owner: Optional[UserProfile] = None
+        self._resolved_owner: Optional[User] = None
         self._user_lookup_failed = False
 
         user_id = self.request.query_params.get("user_id") if self.request else None
@@ -80,16 +82,30 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             self._sync_assignments(owner, memories)
         return super().list(request, *args, **kwargs)
 
-    def _resolve_owner(self, user_id: str) -> UserProfile:
-        """Resolve a user identifier to a ``UserProfile`` instance."""
+    def _resolve_owner(self, user_id: str) -> User:
+        """Resolve a user identifier to a ``User`` instance."""
 
-        lookup_errors = (UserProfile.DoesNotExist, ValueError, TypeError)
+        user_lookup_errors = (User.DoesNotExist, ValueError, TypeError)
         try:
-            return UserProfile.objects.get(pk=user_id)
-        except lookup_errors:
+            return User.objects.get(pk=user_id)
+        except user_lookup_errors:
             pass
 
-        return UserProfile.objects.get(user__username=user_id)
+        try:
+            return User.objects.get(username=user_id)
+        except User.DoesNotExist:
+            pass
+
+        profile_lookup_errors = (UserProfile.DoesNotExist, ValueError, TypeError)
+        try:
+            profile = UserProfile.objects.get(pk=user_id)
+        except profile_lookup_errors:
+            pass
+        else:
+            return profile.user
+
+        profile = UserProfile.objects.get(user__username=user_id)
+        return profile.user
 
     def _fetch_user_memories(self, user_id: str) -> List[Dict[str, Any]]:
         try:
@@ -128,9 +144,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 normalised.append(memory)
         return normalised
 
-    def _sync_assignments(
-        self, owner: UserProfile, memories: Iterable[Dict[str, Any]]
-    ) -> None:
+    def _sync_assignments(self, owner: User, memories: Iterable[Dict[str, Any]]) -> None:
         groups: Dict[str, List[str]] = {}
         for memory in memories:
             app_id = memory.get("app_id")
@@ -201,3 +215,4 @@ class ConversationViewSet(viewsets.ModelViewSet):
         except Exception as exc:  # pragma: no cover - external dependency
             logger.error("Memory search failed: %s", exc)
             return Response({"detail": "search failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
