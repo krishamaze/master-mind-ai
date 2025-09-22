@@ -52,24 +52,44 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):  # type: ignore[override]
         queryset = super().get_queryset()
+        self._resolved_owner: Optional[UserProfile] = None
+        self._user_lookup_failed = False
+
         user_id = self.request.query_params.get("user_id") if self.request else None
         if user_id:
-            queryset = queryset.filter(owner_id=user_id)
+            try:
+                owner = self._resolve_owner(user_id)
+            except UserProfile.DoesNotExist:
+                self._user_lookup_failed = True
+                return queryset.none()
+            else:
+                self._resolved_owner = owner
+                queryset = queryset.filter(owner=owner)
         return queryset
 
     def list(self, request, *args, **kwargs):  # type: ignore[override]
         user_id = request.query_params.get("user_id")
-        if user_id:
-            try:
-                owner = UserProfile.objects.get(pk=user_id)
-            except UserProfile.DoesNotExist:
-                return Response(
-                    {"detail": "user_id not found"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        if getattr(self, "_user_lookup_failed", False):
+            return Response(
+                {"detail": "user_id not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        owner = getattr(self, "_resolved_owner", None)
+        if user_id and owner:
             memories = self._fetch_user_memories(user_id)
             self._sync_assignments(owner, memories)
         return super().list(request, *args, **kwargs)
+
+    def _resolve_owner(self, user_id: str) -> UserProfile:
+        """Resolve a user identifier to a ``UserProfile`` instance."""
+
+        lookup_errors = (UserProfile.DoesNotExist, ValueError, TypeError)
+        try:
+            return UserProfile.objects.get(pk=user_id)
+        except lookup_errors:
+            pass
+
+        return UserProfile.objects.get(user__username=user_id)
 
     def _fetch_user_memories(self, user_id: str) -> List[Dict[str, Any]]:
         try:
