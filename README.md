@@ -46,7 +46,7 @@ Deployment steps and security practices are described in [`docs/deployment.md`](
 - `GET /api/v1/health/` – Service health check
 - `POST /api/v1/conversations/` – Store a conversation
 - `POST /api/v1/conversations/search/` – Search stored memories (requires `query` and `user_id`)
-- `POST /api/v1/prompts/enhance/` – Enhance a prompt with relevant memories (requires `prompt` and `user_id`)
+- `POST /api/v1/prompts/enhance/` – Enhance a prompt with relevant memories (requires `prompt` and `user_id`; accepts optional `app_id` and `run_id` for richer context)
 
 ## Technology Stack
 - Django
