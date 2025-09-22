@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Dict, Iterable, List, Optional
 
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
@@ -13,6 +14,7 @@ from rest_framework.response import Response
 
 from ..models import Assignment, Conversation, UserProfile
 from ..serializers import AssignmentSerializer, ConversationSerializer, UserProfileSerializer
+from ..services.assignment_summary import summarize_memories
 from ..services.memory_service import MemoryService
 from mem0.client.utils import APIError
 
@@ -47,6 +49,98 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
+
+    def get_queryset(self):  # type: ignore[override]
+        queryset = super().get_queryset()
+        user_id = self.request.query_params.get("user_id") if self.request else None
+        if user_id:
+            queryset = queryset.filter(owner_id=user_id)
+        return queryset
+
+    def list(self, request, *args, **kwargs):  # type: ignore[override]
+        user_id = request.query_params.get("user_id")
+        if user_id:
+            try:
+                owner = UserProfile.objects.get(pk=user_id)
+            except UserProfile.DoesNotExist:
+                return Response(
+                    {"detail": "user_id not found"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            memories = self._fetch_user_memories(user_id)
+            self._sync_assignments(owner, memories)
+        return super().list(request, *args, **kwargs)
+
+    def _fetch_user_memories(self, user_id: str) -> List[Dict[str, Any]]:
+        try:
+            service = MemoryService()
+        except ValueError as exc:  # pragma: no cover - configuration error
+            logger.error("Unable to initialise MemoryService: %s", exc)
+            return []
+
+        client = getattr(service, "client", None)
+        if not client:
+            logger.info("MemoryService client unavailable; skipping Mem0 sync")
+            return []
+
+        fetch_methods = (
+            "get_all",
+            "get_all_memories",
+            "list",
+        )
+        memories: Optional[Iterable[Dict[str, Any]]] = None
+        for method_name in fetch_methods:
+            if hasattr(client, method_name):
+                fetcher = getattr(client, method_name)
+                try:
+                    memories = fetcher(user_id=user_id)
+                except Exception as exc:  # pragma: no cover - external dependency
+                    logger.error("Mem0 %s failed: %s", method_name, exc)
+                    memories = []
+                break
+        else:
+            logger.warning("Mem0 client does not support bulk memory retrieval")
+            memories = []
+
+        normalised: List[Dict[str, Any]] = []
+        for memory in memories or []:
+            if isinstance(memory, dict):
+                normalised.append(memory)
+        return normalised
+
+    def _sync_assignments(
+        self, owner: UserProfile, memories: Iterable[Dict[str, Any]]
+    ) -> None:
+        groups: Dict[str, List[str]] = {}
+        for memory in memories:
+            app_id = memory.get("app_id")
+            if not isinstance(app_id, str):
+                continue
+            text = self._extract_memory_text(memory)
+            groups.setdefault(app_id, []).append(text)
+
+        for app_id, snippets in groups.items():
+            assignment, created = Assignment.objects.get_or_create(
+                app_id=app_id,
+                defaults={"owner": owner, "name": app_id},
+            )
+            if not created and assignment.owner_id != owner.id:
+                assignment.owner = owner
+                assignment.save(update_fields=["owner", "updated_at"])
+
+            summary = summarize_memories(snippets[:5])
+            if summary and assignment.description != summary:
+                assignment.description = summary
+                assignment.save(update_fields=["description", "updated_at"])
+
+    @staticmethod
+    def _extract_memory_text(memory: Dict[str, Any]) -> str:
+        content_fields = ("content", "memory", "text")
+        for field in content_fields:
+            value = memory.get(field)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
 
 
 class ConversationViewSet(viewsets.ModelViewSet):

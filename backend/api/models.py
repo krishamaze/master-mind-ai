@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import User
+from django.core.validators import RegexValidator
 from django.db import models
 from django.conf import settings
 from pgvector.django import VectorField
@@ -22,6 +23,18 @@ class Assignment(models.Model):
 
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="assignments")
+    app_id = models.CharField(
+        max_length=8,
+        unique=True,
+        validators=[RegexValidator(r"^[A-Za-z0-9]{8}$", "Must be 8 alphanumeric characters")],
+    )
+    description = models.TextField(
+        default="NA",
+        blank=True,
+        help_text="Auto-generated description from LLM analysis of memories",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:  # pragma: no cover - simple representation
         return self.name

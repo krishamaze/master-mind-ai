@@ -17,9 +17,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     """Serializer for assignments."""
 
+    app_id = serializers.RegexField(
+        regex=r"^[A-Za-z0-9]{8}$",
+        max_length=8,
+        min_length=8,
+        help_text="Unique 8 character alphanumeric identifier",
+    )
+
     class Meta:
         model = Assignment
-        fields = ["id", "name", "owner"]
+        fields = [
+            "id",
+            "name",
+            "owner",
+            "app_id",
+            "description",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["description", "created_at", "updated_at"]
 
 
 class ConversationSerializer(serializers.ModelSerializer):
