@@ -46,25 +46,46 @@ class EnhancementEndpointTests(SimpleTestCase):
     @patch("api.views.enhancement.MemoryService")
     def test_returns_enhanced_prompt(self, mock_service) -> None:
         mock_instance = mock_service.return_value
-        mock_instance.enhance_prompt.return_value = "improved"
+        mock_instance.openai_light_cleanup.return_value = "cleaned"
+        mock_instance.multi_level_memory_search.return_value = "improved"
         request = self.factory.post(
-            "/prompts/enhance/", {"prompt": "hello", "user_id": "user1"}, format="json"
+            "/prompts/enhance/",
+            {
+                "prompt": "hello",
+                "user_id": "user1",
+                "app_id": "app.alpha",
+                "run_id": "run-42",
+            },
+            format="json",
         )
         response = enhance_prompt(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             json.loads(response.content), {"enhanced_prompt": "improved"}
         )
-        mock_instance.enhance_prompt.assert_called_once_with("hello", user_id="user1")
+        mock_instance.openai_light_cleanup.assert_called_once_with("hello")
+        mock_instance.multi_level_memory_search.assert_called_once_with(
+            "cleaned",
+            user_id="user1",
+            app_id="app.alpha",
+            run_id="run-42",
+        )
 
     @override_settings(MEM0_API_KEY="key")
     @patch("api.views.enhancement.MemoryService")
     def test_mem0_error_returns_400(self, mock_service) -> None:
         mock_instance = mock_service.return_value
-        mock_instance.enhance_prompt.side_effect = APIError("bad request")
+        mock_instance.openai_light_cleanup.return_value = "cleaned"
+        mock_instance.multi_level_memory_search.side_effect = APIError("bad request")
         request = self.factory.post(
             "/prompts/enhance/", {"prompt": "hello", "user_id": "user1"}, format="json"
         )
         response = enhance_prompt(request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        mock_instance.enhance_prompt.assert_called_once_with("hello", user_id="user1")
+        mock_instance.openai_light_cleanup.assert_called_once_with("hello")
+        mock_instance.multi_level_memory_search.assert_called_once_with(
+            "cleaned",
+            user_id="user1",
+            app_id=None,
+            run_id=None,
+        )

@@ -25,13 +25,22 @@ def enhance_prompt(request):
 
     prompt = data.get("prompt")
     user_id = data.get("user_id")
+    app_id = data.get("app_id")
+    run_id = data.get("run_id")
     if not prompt:
         return JsonResponse({"detail": "prompt is required"}, status=400)
     if not user_id:
         return JsonResponse({"detail": "user_id is required"}, status=400)
 
     try:
-        enhanced = MemoryService().enhance_prompt(prompt, user_id=user_id)
+        service = MemoryService()
+        cleaned_prompt = service.openai_light_cleanup(prompt)
+        enhanced = service.multi_level_memory_search(
+            cleaned_prompt,
+            user_id=user_id,
+            app_id=app_id,
+            run_id=run_id,
+        )
         return JsonResponse({"enhanced_prompt": enhanced})
     except APIError as exc:  # pragma: no cover - external dependency
         logger.error("Prompt enhancement failed: %s", exc)

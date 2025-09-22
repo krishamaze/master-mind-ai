@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import warnings
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from django.conf import settings
 from mem0.client.utils import APIError
@@ -164,6 +164,61 @@ class MemoryService:
             return prompt
 
         return "\n".join(context) + "\n\n" + prompt
+
+    def openai_light_cleanup(self, prompt: str) -> str:
+        """Perform a lightweight cleanup similar to OpenAI preprocessing."""
+
+        if not isinstance(prompt, str):  # pragma: no cover - defensive
+            raise TypeError("prompt must be a string")
+
+        return " ".join(prompt.strip().split())
+
+    def multi_level_memory_search(
+        self,
+        prompt: str,
+        *,
+        user_id: str,
+        app_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> str:
+        """Aggregate memories across personal and documentation contexts."""
+
+        if not user_id:
+            raise ValueError("user_id is required for multi-level memory search")
+
+        context_layers = [
+            {"user_id": user_id, "app_id": app_id, "run_id": run_id},
+            {"user_id": "docs", "app_id": "react19", "run_id": "v19.0.0"},
+        ]
+
+        aggregated: List[str] = []
+        seen: Set[str] = set()
+
+        for layer in context_layers:
+            filters = {
+                key: value
+                for key, value in layer.items()
+                if key != "user_id" and value
+            }
+
+            memories = self.search_memories(
+                prompt,
+                limit=limit,
+                user_id=layer["user_id"],
+                filters=filters or None,
+            )
+
+            for memory in memories:
+                text = (memory.get("content") or memory.get("memory") or "").strip()
+                if text and text not in seen:
+                    aggregated.append(text)
+                    seen.add(text)
+
+        if aggregated:
+            prompt = "\n".join(aggregated) + "\n\n" + prompt
+
+        return self.enhance_prompt(prompt, user_id=user_id, limit=limit)
 
     def enhance_prompt(
         self,
