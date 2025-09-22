@@ -46,5 +46,5 @@ COPY --from=build /app /app
 ENV PORT=8000
 EXPOSE $PORT
 
-# Gunicorn startup command uses Render's PORT environment variable
-CMD gunicorn mastermind.wsgi:application --bind 0.0.0.0:$PORT
+# Run database migrations before starting Gunicorn using Render's PORT environment variable
+CMD sh -c "python manage.py migrate --noinput && gunicorn mastermind.wsgi:application --bind 0.0.0.0:$PORT"
