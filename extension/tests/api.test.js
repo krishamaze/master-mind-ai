@@ -39,7 +39,7 @@ describe('APIClient.createAssignment', () => {
   });
 
   test('injects the stored user id into the assignment payload', async () => {
-    const payload = { name: 'NewAssign', user_id: 'malicious-user' };
+    const payload = { name: 'NewAssign', user_id: 'malicious-user', app_id: 'ABCDEFGH' };
 
     await apiClient.createAssignment('https://custom.example', payload);
 
@@ -50,8 +50,9 @@ describe('APIClient.createAssignment', () => {
     expect(requestUrl).toBe('https://custom.example/api/v1/assignments/');
 
     const body = JSON.parse(options.body);
-    expect(body).toEqual({ name: 'NewAssign', user_id: 'user-123' });
+    expect(body).toEqual({ name: 'NewAssign', user_id: 'user-123', app_id: 'ABCDEFGH' });
     expect(payload.user_id).toBe('user-123');
+    expect(payload.app_id).toBe('ABCDEFGH');
   });
 
   test('falls back to the configured base URL when none is provided', async () => {
@@ -60,13 +61,13 @@ describe('APIClient.createAssignment', () => {
       apiBaseUrl: 'https://fallback.example'
     });
 
-    await apiClient.createAssignment(undefined, { name: 'AnotherOne' });
+    await apiClient.createAssignment(undefined, { name: 'AnotherOne', app_id: 'HGFEDCBA' });
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [requestUrl, options] = fetch.mock.calls[0];
     expect(requestUrl).toBe('https://fallback.example/api/v1/assignments/');
 
     const body = JSON.parse(options.body);
-    expect(body).toEqual({ name: 'AnotherOne', user_id: 'user-abc' });
+    expect(body).toEqual({ name: 'AnotherOne', user_id: 'user-abc', app_id: 'HGFEDCBA' });
   });
 });
