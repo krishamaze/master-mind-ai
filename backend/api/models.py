@@ -17,11 +17,11 @@ class UserProfile(models.Model):
         return f"Profile({self.user.username})"
 
 
-class Project(models.Model):
-    """Project grouping conversations."""
+class Assignment(models.Model):
+    """Assignment grouping conversations."""
 
     name = models.CharField(max_length=255)
-    owner = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="projects")
+    owner = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="assignments")
 
     def __str__(self) -> str:  # pragma: no cover - simple representation
         return self.name
@@ -31,8 +31,12 @@ class Conversation(models.Model):
     """Stored conversation text and embeddings."""
 
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="conversations")
-    project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="conversations", null=True, blank=True
+    assignment = models.ForeignKey(
+        Assignment,
+        on_delete=models.CASCADE,
+        related_name="conversations",
+        null=True,
+        blank=True,
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

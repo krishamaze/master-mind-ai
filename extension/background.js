@@ -120,13 +120,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 async function handleEnhancement(prompt, appId, runId) {
   const payload = { prompt };
-  const { userId, projectId } = await getSettings();
+  const { userId, assignmentId } = await getSettings();
 
   if (userId) {
     payload.user_id = userId;
   }
 
-  const effectiveApp = appId || projectId;
+  const effectiveApp = appId || assignmentId;
   if (effectiveApp) {
     payload.app_id = effectiveApp;
   }

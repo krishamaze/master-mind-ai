@@ -11,8 +11,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from ..models import Conversation, Project, UserProfile
-from ..serializers import ConversationSerializer, ProjectSerializer, UserProfileSerializer
+from ..models import Assignment, Conversation, UserProfile
+from ..serializers import AssignmentSerializer, ConversationSerializer, UserProfileSerializer
 from ..services.memory_service import MemoryService
 from mem0.client.utils import APIError
 
@@ -42,11 +42,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
-    """API endpoint for projects."""
+class AssignmentViewSet(viewsets.ModelViewSet):
+    """API endpoint for assignments."""
 
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentSerializer
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
