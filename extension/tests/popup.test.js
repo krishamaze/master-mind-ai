@@ -29,6 +29,7 @@ describe('popup assignment creation flow', () => {
   let mockSetSettings;
   let mockCreateAssignment;
   let mockFetchAssignments;
+  let createdAppId;
 
   beforeEach(async () => {
     jest.resetModules();
@@ -50,11 +51,17 @@ describe('popup assignment creation flow', () => {
       assignmentId: ''
     });
     mockSetSettings = jest.fn().mockResolvedValue(undefined);
-    mockCreateAssignment = jest.fn().mockResolvedValue({ id: 10, name: 'NewAssign1' });
+    createdAppId = '';
+    mockCreateAssignment = jest.fn().mockImplementation((_baseUrl, payload) => {
+      createdAppId = payload.app_id;
+      return Promise.resolve({ id: 10, name: 'NewAssign1', app_id: payload.app_id });
+    });
     mockFetchAssignments = jest
       .fn()
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: 10, name: 'NewAssign1' }])
+      .mockImplementationOnce(() =>
+        Promise.resolve([{ id: 10, name: 'NewAssign1', app_id: createdAppId }])
+      )
       .mockResolvedValue([]);
 
     await jest.unstable_mockModule('../config.js', () => ({
@@ -100,9 +107,10 @@ describe('popup assignment creation flow', () => {
     await flushPromises();
     await flushPromises();
 
-    expect(mockCreateAssignment).toHaveBeenCalledWith('https://api.example', {
-      name: 'NewAssign1'
-    });
+    expect(mockCreateAssignment).toHaveBeenCalledTimes(1);
+    const [, createPayload] = mockCreateAssignment.mock.calls[0];
+    expect(createPayload.name).toBe('NewAssign1');
+    expect(createPayload.app_id).toMatch(/^[A-Za-z0-9]{8}$/);
 
     expect(mockFetchAssignments).toHaveBeenCalledTimes(2);
     expect(mockFetchAssignments).toHaveBeenLastCalledWith('https://api.example', 'user-123');
@@ -110,9 +118,9 @@ describe('popup assignment creation flow', () => {
     expect(mockSetSettings).toHaveBeenCalledWith({
       environment: 'production',
       userId: 'user-123',
-      assignmentId: '10'
+      assignmentId: createPayload.app_id
     });
 
-    expect(assignmentSelect.value).toBe('10');
+    expect(assignmentSelect.value).toBe(createPayload.app_id);
   });
 });

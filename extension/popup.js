@@ -14,6 +14,53 @@ const newAssignmentFeedback = document.getElementById('new-assignment-feedback')
 
 const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
 const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load assignments';
+const APP_ID_PATTERN = /^[A-Za-z0-9]{8}$/;
+const APP_ID_LENGTH = 8;
+
+function isValidAppId(value) {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return APP_ID_PATTERN.test(value);
+}
+
+function generateAppId() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charactersLength = characters.length;
+  const cryptoObj =
+    typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues
+      ? globalThis.crypto
+      : null;
+
+  if (cryptoObj) {
+    const randomValues = cryptoObj.getRandomValues(new Uint32Array(APP_ID_LENGTH));
+    return Array.from(randomValues, value => characters[value % charactersLength]).join('');
+  }
+
+  let fallbackId = '';
+  for (let i = 0; i < APP_ID_LENGTH; i += 1) {
+    const randomIndex = Math.floor(Math.random() * charactersLength);
+    fallbackId += characters[randomIndex];
+  }
+  return fallbackId;
+}
+
+function getAssignmentOptionValue(assignment) {
+  if (!assignment) {
+    return '';
+  }
+
+  const appId = typeof assignment.app_id === 'string' ? assignment.app_id : '';
+  if (isValidAppId(appId)) {
+    return appId;
+  }
+
+  if (assignment.id !== undefined && assignment.id !== null) {
+    return String(assignment.id);
+  }
+
+  return '';
+}
 
 let statusTimeoutId;
 let userIdSaved = false;
@@ -210,8 +257,27 @@ async function loadAssignments(selectedAssignmentId = '') {
     setAssignmentPlaceholder('Choose assignment...');
 
     assignments.forEach(assignment => {
+      if (!assignment) {
+        return;
+      }
+
       const option = document.createElement('option');
-      option.value = String(assignment.id);
+      const optionValue = getAssignmentOptionValue(assignment);
+      if (optionValue) {
+        option.value = optionValue;
+      } else if (assignment.id !== undefined && assignment.id !== null) {
+        option.value = String(assignment.id);
+      } else {
+        option.value = '';
+      }
+
+      if (assignment.id !== undefined && assignment.id !== null) {
+        option.dataset.assignmentId = String(assignment.id);
+      }
+      if (typeof assignment.app_id === 'string') {
+        option.dataset.appId = assignment.app_id;
+      }
+
       option.textContent = assignment.name;
       assignmentEl.appendChild(option);
     });
@@ -222,11 +288,34 @@ async function loadAssignments(selectedAssignmentId = '') {
     assignmentEl.appendChild(addOption);
 
     if (selectedAssignmentId) {
-      const matched = assignments.find(
-        assignment => String(assignment.id) === String(selectedAssignmentId)
-      );
+      const normalizedSelectedId = String(selectedAssignmentId);
+      const matched = assignments.find(assignment => {
+        if (!assignment) {
+          return false;
+        }
+
+        const value = getAssignmentOptionValue(assignment);
+        if (value && value === normalizedSelectedId) {
+          return true;
+        }
+
+        const rawId = assignment.id;
+        if (rawId !== undefined && rawId !== null) {
+          return String(rawId) === normalizedSelectedId;
+        }
+
+        return false;
+      });
+
       if (matched) {
-        assignmentEl.value = String(matched.id);
+        const matchedValue = getAssignmentOptionValue(matched);
+        if (matchedValue) {
+          assignmentEl.value = matchedValue;
+        } else if (matched.id !== undefined && matched.id !== null) {
+          assignmentEl.value = String(matched.id);
+        } else {
+          assignmentEl.value = '';
+        }
       } else {
         assignmentEl.value = '';
         showStatus('Saved assignment is unavailable. Please choose another assignment.', true);
@@ -349,29 +438,62 @@ saveButton.addEventListener('click', async () => {
       }
       setAssignmentNameFeedback('');
       showStatus('Creating assignment...', false, { persist: true });
+
+      const generatedAppId = generateAppId();
       const createdAssignment = await apiClient.createAssignment(baseUrl, {
-        name: normalizedName
+        name: normalizedName,
+        app_id: generatedAppId
       });
 
       const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
+      const createdAssignmentAppId = isValidAppId(createdAssignment?.app_id)
+        ? createdAssignment.app_id
+        : generatedAppId;
       const createdAssignmentName = createdAssignment?.name ?? normalizedName;
       hideNewAssignmentInput();
 
-      const assignments = await loadAssignments(createdAssignmentId);
+      const preferredSelection = createdAssignmentAppId || createdAssignmentId;
+      const assignments = await loadAssignments(preferredSelection);
 
-      let assignmentIdToSave = createdAssignmentId;
+      let assignmentIdToSave = createdAssignmentAppId;
       if (!assignmentIdToSave && assignments.length) {
-        const matched = assignments.find(assignment => assignment?.name === createdAssignmentName);
-        if (matched?.id) {
-          assignmentIdToSave = String(matched.id);
+        const matched = assignments.find(assignment => {
+          if (!assignment) {
+            return false;
+          }
+
+          if (assignment?.name === createdAssignmentName) {
+            return true;
+          }
+
+          const optionValue = getAssignmentOptionValue(assignment);
+          if (optionValue && optionValue === preferredSelection) {
+            return true;
+          }
+
+          const rawId = assignment?.id;
+          if (rawId !== undefined && rawId !== null) {
+            return String(rawId) === createdAssignmentId;
+          }
+
+          return false;
+        });
+
+        if (matched) {
+          const matchedValue = getAssignmentOptionValue(matched);
+          assignmentIdToSave = matchedValue || (matched.id !== undefined && matched.id !== null ? String(matched.id) : '');
           assignmentEl.value = assignmentIdToSave;
         }
       }
 
       if (assignmentIdToSave) {
-        await setSettings({ environment, userId, assignmentId: assignmentIdToSave });
-        assignmentEl.value = assignmentIdToSave;
-        showStatus('Assignment created and saved.', false);
+        const normalizedAssignmentIdToSave = String(assignmentIdToSave);
+        await setSettings({ environment, userId, assignmentId: normalizedAssignmentIdToSave });
+        assignmentEl.value = normalizedAssignmentIdToSave;
+        const successMessage = isValidAppId(normalizedAssignmentIdToSave)
+          ? 'Assignment created and saved.'
+          : 'Assignment created and saved with a legacy identifier.';
+        showStatus(successMessage, !isValidAppId(normalizedAssignmentIdToSave), { persist: !isValidAppId(normalizedAssignmentIdToSave) });
       } else {
         await setSettings({ environment, userId, assignmentId: '' });
         showStatus('Assignment created but could not be auto-selected. Please choose it manually.', true, {
