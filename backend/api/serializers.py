@@ -20,6 +20,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     """Serializer for assignments."""
 
+    owner = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, allow_null=True
+    )
     app_id = serializers.RegexField(
         regex=r"^[A-Za-z0-9]{8}$",
         max_length=8,

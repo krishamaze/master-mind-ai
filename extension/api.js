@@ -50,7 +50,10 @@ class APIClient {
     return this.request(`/api/v1/assignments/${query}`, { baseUrl });
   }
 
-  createAssignment(baseUrl, payload) {
+  async createAssignment(baseUrl, payload = {}) {
+    const { userId } = await getSettings();
+    payload.user_id = userId;
+
     return this.request('/api/v1/assignments/', {
       method: 'POST',
       body: JSON.stringify(payload),

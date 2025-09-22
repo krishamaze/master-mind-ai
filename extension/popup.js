@@ -350,8 +350,7 @@ saveButton.addEventListener('click', async () => {
       setAssignmentNameFeedback('');
       showStatus('Creating assignment...', false, { persist: true });
       const createdAssignment = await apiClient.createAssignment(baseUrl, {
-        name: normalizedName,
-        user_id: userId
+        name: normalizedName
       });
 
       const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
