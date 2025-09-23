@@ -13,36 +13,14 @@ const newAssignmentInput = document.getElementById('new-assignment-name');
 const newAssignmentFeedback = document.getElementById('new-assignment-feedback');
 
 const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
-const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load assignments';
+const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load app IDs';
 const APP_ID_PATTERN = /^[A-Za-z0-9]{8}$/;
-const APP_ID_LENGTH = 8;
 
 function isValidAppId(value) {
   if (!value || typeof value !== 'string') {
     return false;
   }
   return APP_ID_PATTERN.test(value);
-}
-
-function generateAppId() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const charactersLength = characters.length;
-  const cryptoObj =
-    typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues
-      ? globalThis.crypto
-      : null;
-
-  if (cryptoObj) {
-    const randomValues = cryptoObj.getRandomValues(new Uint32Array(APP_ID_LENGTH));
-    return Array.from(randomValues, value => characters[value % charactersLength]).join('');
-  }
-
-  let fallbackId = '';
-  for (let i = 0; i < APP_ID_LENGTH; i += 1) {
-    const randomIndex = Math.floor(Math.random() * charactersLength);
-    fallbackId += characters[randomIndex];
-  }
-  return fallbackId;
 }
 
 function getAssignmentOptionValue(assignment) {
@@ -123,21 +101,21 @@ function validateAssignmentName(name) {
   const trimmedName = rawName.trim();
 
   if (!trimmedName) {
-    return { valid: false, message: 'Enter an assignment name to continue.', normalizedName: '' };
+    return { valid: false, message: 'Enter an app ID to continue.', normalizedName: '' };
   }
 
   if (/\s/.test(rawName)) {
-    return { valid: false, message: 'Assignment name cannot contain spaces.', normalizedName: '' };
+    return { valid: false, message: 'App ID cannot contain spaces.', normalizedName: '' };
   }
 
   if (!/^[A-Za-z0-9]+$/.test(trimmedName)) {
-    return { valid: false, message: 'Assignment name must be alphanumeric.', normalizedName: '' };
+    return { valid: false, message: 'App ID must be alphanumeric.', normalizedName: '' };
   }
 
-  if (trimmedName.length < 8) {
+  if (trimmedName.length !== 8) {
     return {
       valid: false,
-      message: 'Assignment name must be at least 8 characters.',
+      message: 'App ID must be exactly 8 characters.',
       normalizedName: ''
     };
   }
@@ -219,7 +197,7 @@ function updateSaveButtonState() {
     const { valid, message } = validateAssignmentName(newAssignmentName);
     setAssignmentNameFeedback(message);
     saveButton.disabled = !valid;
-    saveButton.textContent = 'Create Assignment';
+    saveButton.textContent = 'Create App ID';
     return;
   }
 
@@ -237,14 +215,14 @@ async function loadAssignments(selectedAssignmentId = '') {
   assignmentEl.disabled = true;
   if (!userId) {
     toggleAssignmentLoading(false);
-    setAssignmentPlaceholder('Save user ID to load assignments');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
     return [];
   }
 
   toggleAssignmentLoading(true);
-  setAssignmentPlaceholder('Loading assignments...');
+  setAssignmentPlaceholder('Loading app IDs...');
   updateSaveButtonState();
 
   let loaded = false;
@@ -254,7 +232,7 @@ async function loadAssignments(selectedAssignmentId = '') {
     const response = await apiClient.fetchAssignments(baseUrl, userId);
     assignments = Array.isArray(response) ? response : response?.results || [];
 
-    setAssignmentPlaceholder('Choose assignment...');
+    setAssignmentPlaceholder('Choose app ID...');
 
     assignments.forEach(assignment => {
       if (!assignment) {
@@ -278,13 +256,13 @@ async function loadAssignments(selectedAssignmentId = '') {
         option.dataset.appId = assignment.app_id;
       }
 
-      option.textContent = assignment.name;
+      option.textContent = assignment.app_id || assignment.name || 'App ID';
       assignmentEl.appendChild(option);
     });
 
     const addOption = document.createElement('option');
     addOption.value = ADD_NEW_ASSIGNMENT_OPTION;
-    addOption.textContent = 'Add New Assignment';
+    addOption.textContent = 'Add New App ID';
     assignmentEl.appendChild(addOption);
 
     if (selectedAssignmentId) {
@@ -318,20 +296,20 @@ async function loadAssignments(selectedAssignmentId = '') {
         }
       } else {
         assignmentEl.value = '';
-        showStatus('Saved assignment is unavailable. Please choose another assignment.', true);
+        showStatus('Saved app ID is unavailable. Please choose another app ID.', true);
       }
     } else {
       assignmentEl.value = '';
     }
 
-    showStatus(`Loaded ${assignments.length} assignment${assignments.length === 1 ? '' : 's'}`);
+    showStatus(`Loaded ${assignments.length} app ID${assignments.length === 1 ? '' : 's'}`);
     loaded = true;
     assignmentEl.disabled = false;
     return assignments;
   } catch (error) {
-    console.error('Failed to load assignments', error);
-    setAssignmentPlaceholder('Choose assignment...');
-    const message = getFriendlyErrorMessage(error, 'Unable to load assignments. Please try again.');
+    console.error('Failed to load app IDs', error);
+    setAssignmentPlaceholder('Choose app ID...');
+    const message = getFriendlyErrorMessage(error, 'Unable to load app IDs. Please try again.');
     showStatus(message, true, { persist: true });
     return [];
   } finally {
@@ -359,7 +337,7 @@ async function init() {
   if (userId) {
     await loadAssignments(assignmentId);
   } else {
-    setAssignmentPlaceholder('Save user ID to load assignments');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
   }
 
@@ -377,7 +355,7 @@ envEl.addEventListener('change', () => {
       assignmentEl.value && assignmentEl.value !== ADD_NEW_ASSIGNMENT_OPTION ? assignmentEl.value : '';
     loadAssignments(selectedAssignmentId);
   } else {
-    setAssignmentPlaceholder('Save user ID to load assignments');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
   }
@@ -422,7 +400,7 @@ saveButton.addEventListener('click', async () => {
     if (assignmentEl.disabled) {
       await setSettings({ environment, userId, assignmentId: '' });
       userIdSaved = true;
-      showStatus('User ID saved. Loading assignments...', false, { persist: true });
+      showStatus('User ID saved. Loading app IDs...', false, { persist: true });
       await loadAssignments();
       updateConnection();
       return;
@@ -437,32 +415,32 @@ saveButton.addEventListener('click', async () => {
         return;
       }
       setAssignmentNameFeedback('');
-      showStatus('Creating assignment...', false, { persist: true });
+      showStatus('Creating app ID...', false, { persist: true });
 
-      const generatedAppId = generateAppId();
+      const desiredAppId = normalizedName;
       const createdAssignment = await apiClient.createAssignment(baseUrl, {
-        name: normalizedName,
-        app_id: generatedAppId
+        name: desiredAppId,
+        app_id: desiredAppId
       });
 
       const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
       const createdAssignmentAppId = isValidAppId(createdAssignment?.app_id)
         ? createdAssignment.app_id
-        : generatedAppId;
-      const createdAssignmentName = createdAssignment?.name ?? normalizedName;
+        : desiredAppId;
+      const createdAssignmentName = createdAssignment?.name ?? desiredAppId;
       hideNewAssignmentInput();
 
       const preferredSelection = createdAssignmentAppId || createdAssignmentId;
       const assignments = await loadAssignments(preferredSelection);
 
       let assignmentIdToSave = createdAssignmentAppId;
-      if (!assignmentIdToSave && assignments.length) {
+      if ((!assignmentIdToSave || !assignments.some(item => getAssignmentOptionValue(item) === assignmentIdToSave)) && assignments.length) {
         const matched = assignments.find(assignment => {
           if (!assignment) {
             return false;
           }
 
-          if (assignment?.name === createdAssignmentName) {
+          if (assignment?.app_id === createdAssignmentName || assignment?.name === createdAssignmentName) {
             return true;
           }
 
@@ -490,13 +468,10 @@ saveButton.addEventListener('click', async () => {
         const normalizedAssignmentIdToSave = String(assignmentIdToSave);
         await setSettings({ environment, userId, assignmentId: normalizedAssignmentIdToSave });
         assignmentEl.value = normalizedAssignmentIdToSave;
-        const successMessage = isValidAppId(normalizedAssignmentIdToSave)
-          ? 'Assignment created and saved.'
-          : 'Assignment created and saved with a legacy identifier.';
-        showStatus(successMessage, !isValidAppId(normalizedAssignmentIdToSave), { persist: !isValidAppId(normalizedAssignmentIdToSave) });
+        showStatus('App ID created and saved.');
       } else {
         await setSettings({ environment, userId, assignmentId: '' });
-        showStatus('Assignment created but could not be auto-selected. Please choose it manually.', true, {
+        showStatus('App ID created but could not be auto-selected. Please choose it manually.', true, {
           persist: true
         });
         return;
@@ -509,7 +484,7 @@ saveButton.addEventListener('click', async () => {
     }
 
     if (!selectedAssignment) {
-      showStatus('Select an assignment to save.', true);
+      showStatus('Select an app ID to save.', true);
       return;
     }
 
@@ -520,7 +495,7 @@ saveButton.addEventListener('click', async () => {
   } catch (error) {
     console.error('Failed to save settings', error);
     const errorMessage = isAddingNewAssignment
-      ? getFriendlyErrorMessage(error, 'Unable to create assignment. Please try again.')
+      ? getFriendlyErrorMessage(error, 'Unable to create app ID. Please try again.')
       : getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
     showStatus(errorMessage, true, { persist: true });
   } finally {
@@ -531,7 +506,7 @@ saveButton.addEventListener('click', async () => {
 userIdEl.addEventListener('input', () => {
   userIdSaved = false;
   hideNewAssignmentInput();
-  setAssignmentPlaceholder('Save user ID to load assignments');
+  setAssignmentPlaceholder('Save user ID to load app IDs');
   toggleAssignmentLoading(false);
   assignmentEl.disabled = true;
   if (statusEl.textContent !== USER_ID_PROMPT_MESSAGE) {

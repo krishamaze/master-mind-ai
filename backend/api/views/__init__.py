@@ -52,6 +52,10 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
 
+    def perform_create(self, serializer: AssignmentSerializer) -> None:
+        assignment = serializer.save()
+        self._initialise_mem0_namespace(assignment)
+
     def get_queryset(self):  # type: ignore[override]
         queryset = super().get_queryset()
         self._resolved_owner: Optional[User] = None
@@ -81,6 +85,34 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             memories = self._fetch_user_memories(user_id)
             self._sync_assignments(owner, memories)
         return super().list(request, *args, **kwargs)
+
+    def _initialise_mem0_namespace(self, assignment: Assignment) -> None:
+        try:
+            service = MemoryService()
+        except ValueError as exc:  # pragma: no cover - configuration error
+            logger.info(
+                "Skipping Mem0 namespace initialisation for %s: %s",
+                assignment.app_id,
+                exc,
+            )
+            return
+
+        try:
+            service.add_memory(
+                text=f"[init] assignment {assignment.app_id}",
+                metadata={
+                    "assignment_id": str(assignment.id),
+                    "app_id": assignment.app_id,
+                    "source": "assignment_init",
+                },
+                user_id=str(assignment.owner_id),
+            )
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.error(
+                "Failed to initialise Mem0 namespace for %s: %s",
+                assignment.app_id,
+                exc,
+            )
 
     def _resolve_owner(self, user_id: str) -> User:
         """Resolve a user identifier to a ``User`` instance."""
