@@ -30,6 +30,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
         min_length=8,
         help_text="Unique 8 character alphanumeric identifier",
     )
+    name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Assignment
@@ -45,6 +46,22 @@ class AssignmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["description", "created_at", "updated_at"]
 
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Ensure assignment names always match their ``app_id``."""
+
+        attrs = super().validate(attrs)
+
+        app_id = attrs.get("app_id") or getattr(self.instance, "app_id", None)
+        if not app_id:
+            raise serializers.ValidationError({"app_id": "This field is required."})
+
+        provided_name = attrs.get("name")
+        if provided_name and provided_name != app_id:
+            raise serializers.ValidationError({"name": "Must match app_id."})
+
+        attrs["name"] = app_id
+        return attrs
+
     def create(self, validated_data: dict[str, Any]) -> Assignment:
         """Create an assignment, resolving ``user_id`` values to ``User`` instances."""
 
@@ -58,7 +75,18 @@ class AssignmentSerializer(serializers.ModelSerializer):
         elif user_identifier is not None:
             validated_data["owner"] = self._resolve_user(user_identifier)
 
+        validated_data["name"] = validated_data["app_id"]
+
         return Assignment.objects.create(**validated_data)
+
+    def update(self, instance: Assignment, validated_data: dict[str, Any]) -> Assignment:
+        """Maintain ``name``/``app_id`` parity during updates."""
+
+        if "app_id" in validated_data:
+            validated_data["name"] = validated_data["app_id"]
+        else:
+            validated_data.pop("name", None)
+        return super().update(instance, validated_data)
 
     @staticmethod
     def _resolve_user(user_identifier: Any) -> User:

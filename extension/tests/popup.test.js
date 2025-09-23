@@ -54,13 +54,13 @@ describe('popup assignment creation flow', () => {
     createdAppId = '';
     mockCreateAssignment = jest.fn().mockImplementation((_baseUrl, payload) => {
       createdAppId = payload.app_id;
-      return Promise.resolve({ id: 10, name: 'NewAssign1', app_id: payload.app_id });
+      return Promise.resolve({ id: 10, name: 'NewApp01', app_id: payload.app_id });
     });
     mockFetchAssignments = jest
       .fn()
       .mockResolvedValueOnce([])
       .mockImplementationOnce(() =>
-        Promise.resolve([{ id: 10, name: 'NewAssign1', app_id: createdAppId }])
+        Promise.resolve([{ id: 10, name: 'NewApp01', app_id: createdAppId }])
       )
       .mockResolvedValue([]);
 
@@ -91,7 +91,7 @@ describe('popup assignment creation flow', () => {
     document.body.innerHTML = '';
   });
 
-  test('creates a new assignment and saves the selection', async () => {
+  test('creates a new app ID and saves the selection', async () => {
     const assignmentSelect = document.getElementById('assignment-select');
     const newAssignmentInput = document.getElementById('new-assignment-name');
     const saveButton = document.getElementById('save');
@@ -99,7 +99,7 @@ describe('popup assignment creation flow', () => {
     assignmentSelect.value = ADD_NEW_ASSIGNMENT_OPTION;
     assignmentSelect.dispatchEvent(new Event('change'));
 
-    newAssignmentInput.value = 'NewAssign1';
+    newAssignmentInput.value = 'NewApp01';
     newAssignmentInput.dispatchEvent(new Event('input'));
 
     saveButton.click();
@@ -109,8 +109,8 @@ describe('popup assignment creation flow', () => {
 
     expect(mockCreateAssignment).toHaveBeenCalledTimes(1);
     const [, createPayload] = mockCreateAssignment.mock.calls[0];
-    expect(createPayload.name).toBe('NewAssign1');
-    expect(createPayload.app_id).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(createPayload.name).toBe('NewApp01');
+    expect(createPayload.app_id).toBe('NewApp01');
 
     expect(mockFetchAssignments).toHaveBeenCalledTimes(2);
     expect(mockFetchAssignments).toHaveBeenLastCalledWith('https://api.example', 'user-123');
