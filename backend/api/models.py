@@ -1,28 +1,25 @@
 """Database models for the API application."""
-from __future__ import annotations
 
-from django.contrib.auth.models import User
+from __future__ import annotations
 from django.core.validators import RegexValidator
 from django.db import models
 from django.conf import settings
 from pgvector.django import VectorField
 
-
 class UserProfile(models.Model):
     """Extended user profile information."""
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    # CHANGED: Use string user_id instead of User ForeignKey
+    user_id = models.CharField(max_length=255, unique=True)
     bio = models.TextField(blank=True)
 
-    def __str__(self) -> str:  # pragma: no cover - simple representation
-        return f"Profile({self.user.username})"
-
+    def __str__(self) -> str:
+        return f"Profile({self.user_id})"
 
 class Assignment(models.Model):
     """Assignment grouping conversations."""
-
     name = models.CharField(max_length=255)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignments")
+    # CHANGED: Use string owner_id instead of User ForeignKey  
+    owner_id = models.CharField(max_length=255)
     app_id = models.CharField(
         max_length=8,
         unique=True,
@@ -36,14 +33,13 @@ class Assignment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self) -> str:  # pragma: no cover - simple representation
+    def __str__(self) -> str:
         return self.name
-
 
 class Conversation(models.Model):
     """Stored conversation text and embeddings."""
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="conversations")
+    # CHANGED: Use string user_id instead of User ForeignKey
+    user_id = models.CharField(max_length=255)  
     assignment = models.ForeignKey(
         Assignment,
         on_delete=models.CASCADE,
@@ -63,5 +59,5 @@ class Conversation(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
-    def __str__(self) -> str:  # pragma: no cover - simple representation
+    def __str__(self) -> str:
         return f"Conversation({self.user_id}, {self.created_at:%Y-%m-%d})"
