@@ -23,6 +23,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), required=False, allow_null=True
     )
+    user_id = serializers.CharField(write_only=True, required=False)
     app_id = serializers.RegexField(
         regex=r"^[A-Za-z0-9]{8}$",
         max_length=8,
@@ -36,6 +37,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "owner",
+            "user_id",
             "app_id",
             "description",
             "created_at",
@@ -46,12 +48,16 @@ class AssignmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict[str, Any]) -> Assignment:
         """Create an assignment, resolving ``user_id`` values to ``User`` instances."""
 
+        user_identifier = validated_data.pop("user_id", None)
         owner = validated_data.get("owner")
+
         if owner is None:
-            user_identifier = self.initial_data.get("user_id")
             if user_identifier is None:
                 raise serializers.ValidationError({"owner": "This field is required."})
             validated_data["owner"] = self._resolve_user(user_identifier)
+        elif user_identifier is not None:
+            validated_data["owner"] = self._resolve_user(user_identifier)
+
         return Assignment.objects.create(**validated_data)
 
     @staticmethod
