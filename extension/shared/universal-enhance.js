@@ -55,15 +55,20 @@ export class UniversalEnhanceSystem {
     this.ui?.showLoading();
 
     let appId = '';
+    let userId = '';
     try {
-      const { assignmentId } = await getSettings();
-      appId = assignmentId || '';
+      const { appId: storedAppId, userId: storedUserId } = await getSettings();
+      appId = storedAppId || '';
+      userId = storedUserId || '';
     } catch (error) {
       console.warn('Unable to load assignment settings for enhancement', error);
     }
 
     const runId = getRunId();
     const message = { type: 'enhance', prompt };
+    if (userId) {
+      message.user_id = userId;
+    }
     if (appId) {
       message.app_id = appId;
     }

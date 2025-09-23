@@ -39,6 +39,36 @@ def health_check(_request) -> JsonResponse:
         )
 
 
+@require_http_methods(["GET"])
+def list_user_app_ids(_request, user_id: str) -> JsonResponse:
+    """Return the set of app IDs known for a given user namespace."""
+
+    try:
+        service = MemoryService()
+    except ValueError as exc:  # pragma: no cover - configuration error
+        logger.info("Mem0 unavailable, returning empty app id list: %s", exc)
+        return JsonResponse({"app_ids": []})
+
+    try:
+        memories = service.list_user_memories(user_id)
+    except APIError as exc:  # pragma: no cover - external dependency
+        logger.error("Failed to load app ids for %s: %s", user_id, exc)
+        return JsonResponse({"detail": str(exc)}, status=400)
+    except Exception as exc:  # pragma: no cover - external dependency
+        logger.error("Unexpected error loading app ids for %s: %s", user_id, exc)
+        return JsonResponse({"detail": "unable to load app ids"}, status=500)
+
+    seen = set()
+    app_ids = []
+    for memory in memories:
+        app_id = MemoryService.extract_app_id(memory)
+        if app_id and app_id not in seen:
+            seen.add(app_id)
+            app_ids.append(app_id)
+
+    return JsonResponse({"app_ids": app_ids})
+
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     """API endpoint for user profiles."""
 
@@ -104,6 +134,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                     "assignment_id": str(assignment.id),
                     "app_id": assignment.app_id,
                     "source": "assignment_init",
+                    "user_id": str(assignment.owner_id),
                 },
                 user_id=str(assignment.owner_id),
             )
@@ -146,41 +177,17 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             logger.error("Unable to initialise MemoryService: %s", exc)
             return []
 
-        client = getattr(service, "client", None)
-        if not client:
-            logger.info("MemoryService client unavailable; skipping Mem0 sync")
+        try:
+            return service.list_user_memories(user_id)
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.error("Failed to retrieve memories for %s: %s", user_id, exc)
             return []
-
-        fetch_methods = (
-            "get_all",
-            "get_all_memories",
-            "list",
-        )
-        memories: Optional[Iterable[Dict[str, Any]]] = None
-        for method_name in fetch_methods:
-            if hasattr(client, method_name):
-                fetcher = getattr(client, method_name)
-                try:
-                    memories = fetcher(user_id=user_id)
-                except Exception as exc:  # pragma: no cover - external dependency
-                    logger.error("Mem0 %s failed: %s", method_name, exc)
-                    memories = []
-                break
-        else:
-            logger.warning("Mem0 client does not support bulk memory retrieval")
-            memories = []
-
-        normalised: List[Dict[str, Any]] = []
-        for memory in memories or []:
-            if isinstance(memory, dict):
-                normalised.append(memory)
-        return normalised
 
     def _sync_assignments(self, owner: User, memories: Iterable[Dict[str, Any]]) -> None:
         groups: Dict[str, List[str]] = {}
         for memory in memories:
-            app_id = memory.get("app_id")
-            if not isinstance(app_id, str):
+            app_id = MemoryService.extract_app_id(memory)
+            if not app_id:
                 continue
             text = self._extract_memory_text(memory)
             groups.setdefault(app_id, []).append(text)
@@ -201,12 +208,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _extract_memory_text(memory: Dict[str, Any]) -> str:
-        content_fields = ("content", "memory", "text")
-        for field in content_fields:
-            value = memory.get(field)
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-        return ""
+        return MemoryService.extract_memory_text(memory)
 
 
 class ConversationViewSet(viewsets.ModelViewSet):

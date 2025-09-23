@@ -42,9 +42,12 @@
       const message = { type: 'enhance', prompt };
 
       try {
-        const { assignmentId } = await getSettings();
-        if (assignmentId) {
-          message.app_id = assignmentId;
+        const { appId, userId } = await getSettings();
+        if (userId) {
+          message.user_id = userId;
+        }
+        if (appId) {
+          message.app_id = appId;
         }
       } catch (error) {
         console.warn('Failed to load assignment settings for ChatGPT enhancement', error);

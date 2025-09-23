@@ -28,7 +28,7 @@ describe('popup assignment creation flow', () => {
   let mockGetSettings;
   let mockSetSettings;
   let mockCreateAssignment;
-  let mockFetchAssignments;
+  let mockFetchUserAppIds;
   let createdAppId;
 
   beforeEach(async () => {
@@ -48,7 +48,7 @@ describe('popup assignment creation flow', () => {
     mockGetSettings = jest.fn().mockResolvedValue({
       environment: 'production',
       userId: 'user-123',
-      assignmentId: ''
+      appId: ''
     });
     mockSetSettings = jest.fn().mockResolvedValue(undefined);
     createdAppId = '';
@@ -56,13 +56,11 @@ describe('popup assignment creation flow', () => {
       createdAppId = payload.app_id;
       return Promise.resolve({ id: 10, name: 'NewApp01', app_id: payload.app_id });
     });
-    mockFetchAssignments = jest
+    mockFetchUserAppIds = jest
       .fn()
-      .mockResolvedValueOnce([])
-      .mockImplementationOnce(() =>
-        Promise.resolve([{ id: 10, name: 'NewApp01', app_id: createdAppId }])
-      )
-      .mockResolvedValue([]);
+      .mockResolvedValueOnce({ app_ids: [] })
+      .mockImplementationOnce(() => Promise.resolve({ app_ids: [createdAppId] }))
+      .mockResolvedValue({ app_ids: [] });
 
     await jest.unstable_mockModule('../config.js', () => ({
       ENVIRONMENTS: {
@@ -75,7 +73,7 @@ describe('popup assignment creation flow', () => {
 
     await jest.unstable_mockModule('../api.js', () => ({
       apiClient: {
-        fetchAssignments: mockFetchAssignments,
+        fetchUserAppIds: mockFetchUserAppIds,
         createAssignment: mockCreateAssignment
       }
     }));
@@ -112,13 +110,13 @@ describe('popup assignment creation flow', () => {
     expect(createPayload.name).toBe('NewApp01');
     expect(createPayload.app_id).toBe('NewApp01');
 
-    expect(mockFetchAssignments).toHaveBeenCalledTimes(2);
-    expect(mockFetchAssignments).toHaveBeenLastCalledWith('https://api.example', 'user-123');
+    expect(mockFetchUserAppIds).toHaveBeenCalledTimes(2);
+    expect(mockFetchUserAppIds).toHaveBeenLastCalledWith('https://api.example', 'user-123');
 
     expect(mockSetSettings).toHaveBeenCalledWith({
       environment: 'production',
       userId: 'user-123',
-      assignmentId: createPayload.app_id
+      appId: createPayload.app_id
     });
 
     expect(assignmentSelect.value).toBe(createPayload.app_id);
