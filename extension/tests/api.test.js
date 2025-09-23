@@ -20,6 +20,7 @@ describe('APIClient.createAssignment', () => {
     console.error = jest.fn();
     mockGetSettings = jest.fn().mockResolvedValue({
       userId: 'user-123',
+      appId: 'app-xyz',
       apiBaseUrl: 'https://default.example'
     });
     global.fetch = jest.fn().mockResolvedValue(createFetchResponse({ id: 1 }, 201));
@@ -49,6 +50,9 @@ describe('APIClient.createAssignment', () => {
     const [requestUrl, options] = fetch.mock.calls[0];
     expect(requestUrl).toBe('https://custom.example/api/v1/assignments/');
 
+    expect(options.headers['X-User-Id']).toBe('user-123');
+    expect(options.headers['X-App-Id']).toBe('app-xyz');
+
     const body = JSON.parse(options.body);
     expect(body).toEqual({ name: 'NewAssign', user_id: 'user-123', app_id: 'ABCDEFGH' });
     expect(payload.user_id).toBe('user-123');
@@ -58,6 +62,7 @@ describe('APIClient.createAssignment', () => {
   test('falls back to the configured base URL when none is provided', async () => {
     mockGetSettings.mockResolvedValue({
       userId: 'user-abc',
+      appId: '',
       apiBaseUrl: 'https://fallback.example'
     });
 

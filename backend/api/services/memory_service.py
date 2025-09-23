@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import warnings
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Union
 
 from django.conf import settings
 from mem0.client.utils import APIError
@@ -92,6 +92,67 @@ class MemoryService:
         except APIError as exc:  # pragma: no cover - external dependency
             logger.error("Mem0 add API error: %s", exc)
             raise
+
+    @staticmethod
+    def extract_memory_text(memory: Dict[str, Any]) -> str:
+        """Normalise the textual content stored in a memory payload."""
+
+        content_fields = ("content", "memory", "text")
+        for field in content_fields:
+            value = memory.get(field)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
+
+    @staticmethod
+    def extract_app_id(memory: Dict[str, Any]) -> Optional[str]:
+        """Resolve an app identifier from a memory payload."""
+
+        if not isinstance(memory, dict):
+            return None
+
+        raw_app_id = memory.get("app_id")
+        if isinstance(raw_app_id, str) and raw_app_id.strip():
+            return raw_app_id.strip()
+
+        metadata = memory.get("metadata")
+        if isinstance(metadata, dict):
+            meta_app_id = metadata.get("app_id")
+            if isinstance(meta_app_id, str) and meta_app_id.strip():
+                return meta_app_id.strip()
+        return None
+
+    def list_user_memories(self, user_id: str) -> List[Dict[str, Any]]:
+        """Return all memories associated with a particular user."""
+
+        if not self.client:
+            return []
+
+        fetch_methods = (
+            "get_all",
+            "get_all_memories",
+            "list",
+        )
+
+        memories: Optional[Iterable[Dict[str, Any]]] = None
+        for method_name in fetch_methods:
+            if hasattr(self.client, method_name):
+                fetcher = getattr(self.client, method_name)
+                try:
+                    memories = fetcher(user_id=user_id)
+                except Exception as exc:  # pragma: no cover - external dependency
+                    logger.error("Mem0 %s failed: %s", method_name, exc)
+                    memories = []
+                break
+        else:  # pragma: no cover - defensive fallback
+            logger.warning("Mem0 client does not support bulk memory retrieval")
+            memories = []
+
+        normalised: List[Dict[str, Any]] = []
+        for memory in memories or []:
+            if isinstance(memory, dict):
+                normalised.append(memory)
+        return normalised
 
     def search_memories(
         self,

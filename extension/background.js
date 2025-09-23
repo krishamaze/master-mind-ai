@@ -85,7 +85,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'enhance') {
     console.log('🚀 Enhancing prompt:', msg.prompt?.slice(0, 50) + '...');
-    handleEnhancement(msg.prompt, msg.app_id, msg.run_id)
+    handleEnhancement(msg.prompt, msg.app_id, msg.run_id, msg.user_id)
       .then(data => {
         console.log('✅ Prompt enhanced successfully');
         sendResponse({ success: true, data });
@@ -118,15 +118,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-async function handleEnhancement(prompt, appId, runId) {
+async function handleEnhancement(prompt, appId, runId, userIdOverride) {
   const payload = { prompt };
-  const { userId, assignmentId } = await getSettings();
+  const { userId, appId: storedAppId } = await getSettings();
 
-  if (userId) {
-    payload.user_id = userId;
+  const effectiveUser = userIdOverride || userId;
+  if (effectiveUser) {
+    payload.user_id = effectiveUser;
   }
 
-  const effectiveApp = appId || assignmentId;
+  const effectiveApp = appId || storedAppId;
   if (effectiveApp) {
     payload.app_id = effectiveApp;
   }

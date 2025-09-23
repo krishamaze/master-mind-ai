@@ -2,9 +2,16 @@ import { getSettings } from './config.js';
 
 class APIClient {
   async request(path, { method = 'GET', body, baseUrl } = {}) {
-    const { apiBaseUrl } = await getSettings();
+    const { apiBaseUrl, userId, appId } = await getSettings();
     const url = `${baseUrl ?? apiBaseUrl}${path}`;
     const headers = { 'Content-Type': 'application/json' };
+
+    if (userId) {
+      headers['X-User-Id'] = userId;
+    }
+    if (appId) {
+      headers['X-App-Id'] = appId;
+    }
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -50,6 +57,14 @@ class APIClient {
     return this.request(`/api/v1/assignments/${query}`, { baseUrl });
   }
 
+  fetchUserAppIds(baseUrl, userId) {
+    if (!userId) {
+      return Promise.resolve({ app_ids: [] });
+    }
+    const encodedUserId = encodeURIComponent(userId);
+    return this.request(`/api/v1/users/${encodedUserId}/app-ids/`, { baseUrl });
+  }
+
   async createAssignment(baseUrl, payload = {}) {
     const { userId } = await getSettings();
     payload.user_id = userId;
@@ -61,10 +76,20 @@ class APIClient {
     });
   }
 
-  saveConversation(payload) {
+  async saveConversation(payload) {
+    const { userId, appId } = await getSettings();
+    const enrichedPayload = { ...payload };
+
+    if (userId && !enrichedPayload.user_id) {
+      enrichedPayload.user_id = userId;
+    }
+    if (appId && !enrichedPayload.app_id) {
+      enrichedPayload.app_id = appId;
+    }
+
     return this.request('/api/v1/conversations/', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(enrichedPayload)
     });
   }
 
@@ -84,7 +109,7 @@ class APIClient {
   }
 
   async searchMemory(payload) {
-    const { userId } = await getSettings();
+    const { userId, appId } = await getSettings();
     const body = { ...payload };
 
     if (body.userid && !body.user_id) {
@@ -95,6 +120,9 @@ class APIClient {
 
     if (userId) {
       body.user_id = userId;
+    }
+    if (appId) {
+      body.app_id = appId;
     }
     return this.request('/api/v1/conversations/search/', {
       method: 'POST',
