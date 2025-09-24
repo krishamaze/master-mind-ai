@@ -13,7 +13,7 @@ const newAssignmentInput = document.getElementById('new-assignment-name');
 const newAssignmentFeedback = document.getElementById('new-assignment-feedback');
 
 const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
-const USER_ID_PROMPT_MESSAGE = 'Enter User ID first to load app IDs';
+const USER_ID_PROMPT_MESSAGE = 'Enter your User ID first, then save to load available App IDs.';
 const APP_ID_PATTERN = /^[A-Za-z0-9]{8}$/;
 
 function isValidAppId(value) {
@@ -42,8 +42,6 @@ function getAssignmentOptionValue(assignment) {
 
 let statusTimeoutId;
 let userIdSaved = false;
-let appIdPrefetchTimeoutId = null;
-let lastFetchedUserId = '';
 
 function showStatus(message, isError = false, { persist = false } = {}) {
   statusEl.textContent = message;
@@ -185,7 +183,7 @@ function updateSaveButtonState() {
 
   if (!userId) {
     saveButton.disabled = true;
-    saveButton.textContent = 'Save';
+    saveButton.textContent = 'Save User ID';
     return;
   }
 
@@ -218,7 +216,7 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
 
   if (!activeUserId) {
     toggleAssignmentLoading(false);
-    setAssignmentPlaceholder('Enter user ID to load app IDs');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     if (!silent) {
       showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     }
@@ -295,7 +293,6 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
     }
     loaded = true;
     assignmentEl.disabled = false;
-    lastFetchedUserId = activeUserId;
     return appIds;
   } catch (error) {
     console.error('Failed to load app IDs', error);
@@ -310,32 +307,6 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
     assignmentEl.disabled = !loaded;
     updateSaveButtonState();
   }
-}
-
-function scheduleAppIdRefresh() {
-  if (appIdPrefetchTimeoutId) {
-    clearTimeout(appIdPrefetchTimeoutId);
-    appIdPrefetchTimeoutId = null;
-  }
-
-  const pendingUserId = userIdEl.value.trim();
-  if (!pendingUserId) {
-    lastFetchedUserId = '';
-    setAssignmentPlaceholder('Enter user ID to load app IDs');
-    showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
-    updateSaveButtonState();
-    return;
-  }
-
-  if (pendingUserId === lastFetchedUserId) {
-    assignmentEl.disabled = false;
-    return;
-  }
-
-  appIdPrefetchTimeoutId = setTimeout(() => {
-    loadAppIds('', { userIdOverride: pendingUserId, silent: true });
-    appIdPrefetchTimeoutId = null;
-  }, 300);
 }
 
 async function updateConnection() {
@@ -356,7 +327,7 @@ async function init() {
   if (userId) {
     await loadAppIds(appId, { silent: true });
   } else {
-    setAssignmentPlaceholder('Enter user ID to load app IDs');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
   }
 
@@ -373,10 +344,10 @@ envEl.addEventListener('change', () => {
     assignmentEl.value && assignmentEl.value !== ADD_NEW_ASSIGNMENT_OPTION ? assignmentEl.value : '';
   const activeUserId = userIdEl.value.trim();
 
-  if (activeUserId) {
+  if (activeUserId && userIdSaved) {
     loadAppIds(selectedAppId, { userIdOverride: activeUserId, silent: true });
   } else {
-    setAssignmentPlaceholder('Enter user ID to load app IDs');
+    setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     updateSaveButtonState();
   }
@@ -515,10 +486,9 @@ saveButton.addEventListener('click', async () => {
 userIdEl.addEventListener('input', () => {
   userIdSaved = false;
   hideNewAssignmentInput();
-  setAssignmentPlaceholder('Enter user ID to load app IDs');
+  setAssignmentPlaceholder('Save user ID to load app IDs');
   toggleAssignmentLoading(false);
   assignmentEl.disabled = true;
-  scheduleAppIdRefresh();
   updateSaveButtonState();
 });
 
