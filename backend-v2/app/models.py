@@ -32,12 +32,14 @@ class AssignmentCreateRequest(BaseModel):
 
 
 class AssignmentResponse(BaseModel):
-    """Assignment metadata returned after namespace creation."""
+    """Assignment metadata returned after creation."""
 
     id: str
     appid: str
-    owner_id: str
+    user_id: str
+    status: str
     created_at: datetime
+    mem0_namespace: str
 
 
 class EnhanceRequest(BaseModel):

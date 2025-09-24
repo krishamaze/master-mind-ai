@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from mem0.client.main import MemoryClient
@@ -32,42 +34,43 @@ class AsyncMemoryService:
             logger.error("Failed to list memories for %s: %s", user_id, exc)
             return []
 
-        app_ids = {self._extract_app_id(memory) for memory in memories or []}
-        app_ids.discard(None)
-        return sorted(str(app_id) for app_id in app_ids if isinstance(app_id, str))
+        active_apps = set()
+        for memory in memories or []:
+            if not isinstance(memory, dict):
+                continue
+            metadata = memory.get("metadata") or {}
+            app_id = metadata.get("app_id") if isinstance(metadata, dict) else None
+            if isinstance(app_id, str) and app_id.strip():
+                active_apps.add(app_id.strip())
 
-    async def create_assignment_namespace(
-        self, user_id: str, app_id: str, assignment_id: str
-    ) -> bool:
-        """Initialise a namespace for an assignment by storing a seed memory."""
+        return sorted(active_apps)
 
-        metadata = {
-            "app_id": app_id,
-            "assignment_id": assignment_id,
-            "source": "assignment_init",
+    async def create_assignment(self, user_id: str, app_id: str) -> Dict[str, Any]:
+        """Create an assignment without pre-initialising a Mem0 namespace."""
+
+        assignment_id = str(uuid.uuid4())
+        created_at = datetime.utcnow()
+
+        return {
+            "id": assignment_id,
+            "appid": app_id,
+            "user_id": user_id,
+            "status": "created",
+            "created_at": created_at,
+            "mem0_namespace": f"{user_id}:{app_id}",
         }
-        try:
-            await asyncio.to_thread(
-                self.client.add,
-                [{"role": "user", "content": f"[init] assignment {app_id}"}],
-                user_id=user_id,
-                metadata=metadata,
-            )
-            logger.info(
-                "Created namespace for user=%s app_id=%s assignment_id=%s",
-                user_id,
-                app_id,
-                assignment_id,
-            )
-            return True
-        except Exception as exc:  # pragma: no cover - network failures
-            logger.error(
-                "Failed to create namespace for user=%s app_id=%s: %s",
-                user_id,
-                app_id,
-                exc,
-            )
-            return False
+
+    async def add_memory(
+        self, user_id: str, app_id: str, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Store real memory content; Mem0 namespaces are created lazily."""
+
+        return await asyncio.to_thread(
+            self.client.add,
+            messages,
+            user_id=user_id,
+            app_id=app_id,
+        )
 
     async def two_stage_enhance(
         self,
@@ -142,15 +145,6 @@ class AsyncMemoryService:
         except Exception as exc:  # pragma: no cover - network failures
             logger.error("Memory search failed for user=%s: %s", user_id, exc)
             raise
-
-    @staticmethod
-    def _extract_app_id(memory: Dict[str, Any]) -> Optional[str]:
-        metadata = memory.get("metadata") if isinstance(memory, dict) else None
-        if isinstance(metadata, dict):
-            app_id = metadata.get("app_id")
-            if isinstance(app_id, str) and app_id.strip():
-                return app_id.strip()
-        return None
 
     @staticmethod
     def _light_cleanup(prompt: str) -> str:
