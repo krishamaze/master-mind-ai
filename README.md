@@ -10,6 +10,8 @@ Universal AI Conversation Memory & Prompt Enhancement System.
 ## Architecture Overview
 Browser Extension → Django API → Mem0 Memory Layer
 
+> **FastAPI preview:** An experimental stateless FastAPI service that removes the PostgreSQL dependency is available under [`backend-v2/`](backend-v2/). It exposes health, assignment, enhancement, and memory search endpoints so the Chrome extension can be tested against both backends during the migration.
+
 1. **Browser Extension**: Captures conversations and sends data to the backend.
 2. **Django Backend**: Processes requests and stores conversations in PostgreSQL with pgvector.
 3. **Mem0.ai Memory Layer**: Organizes and retrieves contextual memory to improve subsequent prompts.
