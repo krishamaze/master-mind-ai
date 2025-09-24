@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class UserRequest(BaseModel):
@@ -29,8 +29,9 @@ class AssignmentCreateRequest(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def name_must_match_app_id(cls, value: str, values: Dict[str, Any]) -> str:
-        app_id = values.get("app_id")
+    def name_must_match_app_id(cls, value: str, info: ValidationInfo) -> str:
+        data = info.data or {}
+        app_id = data.get("app_id")
         if app_id is not None and value != app_id:
             raise ValueError("name must match app_id")
         return value
