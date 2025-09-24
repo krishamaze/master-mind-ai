@@ -43,6 +43,17 @@ function getAssignmentOptionValue(assignment) {
 let statusTimeoutId;
 let userIdSaved = false;
 
+function resetAssignmentDropdown(message) {
+  assignmentEl.innerHTML = '';
+  if (message) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = message;
+    assignmentEl.appendChild(option);
+  }
+  assignmentEl.value = '';
+}
+
 function showStatus(message, isError = false, { persist = false } = {}) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? 'red' : 'green';
@@ -61,12 +72,12 @@ function showStatus(message, isError = false, { persist = false } = {}) {
 }
 
 function setAssignmentPlaceholder(message) {
-  assignmentEl.innerHTML = `<option value="">${message}</option>`;
-  assignmentEl.value = '';
+  resetAssignmentDropdown(message);
 }
 
 function toggleAssignmentLoading(isLoading) {
   if (assignmentLoadingEl) {
+    assignmentLoadingEl.textContent = 'Loading app IDs...';
     assignmentLoadingEl.hidden = !isLoading;
   }
   assignmentEl.classList.toggle('loading', isLoading);
@@ -201,6 +212,13 @@ function updateSaveButtonState() {
     return;
   }
 
+  if (userIdSaved && !selectedAssignment) {
+    setAssignmentNameFeedback('');
+    saveButton.disabled = true;
+    saveButton.textContent = '✅ User ID Saved';
+    return;
+  }
+
   setAssignmentNameFeedback('');
   saveButton.disabled = !selectedAssignment;
   saveButton.textContent = 'Save';
@@ -213,6 +231,7 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
 
   hideNewAssignmentInput();
   assignmentEl.disabled = true;
+  resetAssignmentDropdown('Loading app IDs...');
 
   if (!activeUserId) {
     toggleAssignmentLoading(false);
@@ -225,7 +244,6 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
   }
 
   toggleAssignmentLoading(true);
-  setAssignmentPlaceholder('Loading app IDs...');
   updateSaveButtonState();
 
   let loaded = false;
