@@ -68,10 +68,41 @@ class APIClient {
         return this.request(`/api/v1/users/${encodedUserId}/app-ids`, { baseUrl });
     }
 
-    async createAssignment(baseUrl, payload) {
+    async createAssignment(baseUrl, payload = {}) {
         const { userId } = await getSettings();
-        payload.user_id = userId;
-        return this.request('/api/v1/assignments/', { method: 'POST', body: JSON.stringify(payload), baseUrl });
+        const normalizedPayload = { ...payload };
+
+        if (!normalizedPayload.appid) {
+            if (normalizedPayload.app_id) {
+                normalizedPayload.appid = normalizedPayload.app_id;
+            } else if (normalizedPayload.name) {
+                normalizedPayload.appid = normalizedPayload.name;
+            }
+        }
+
+        if (userId) {
+            normalizedPayload.user_id = userId;
+        } else {
+            delete normalizedPayload.user_id;
+        }
+
+        delete normalizedPayload.app_id;
+        delete normalizedPayload.name;
+
+        payload.appid = normalizedPayload.appid;
+        if (userId) {
+            payload.user_id = userId;
+        } else {
+            delete payload.user_id;
+        }
+        delete payload.app_id;
+        delete payload.name;
+
+        return this.request('/api/v1/assignments/', {
+            method: 'POST',
+            body: JSON.stringify(normalizedPayload),
+            baseUrl
+        });
     }
 
     async saveConversation(payload) {

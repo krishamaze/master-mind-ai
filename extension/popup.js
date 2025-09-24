@@ -14,7 +14,7 @@ const newAssignmentFeedback = document.getElementById('new-assignment-feedback')
 
 const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
 const USER_ID_PROMPT_MESSAGE = 'Enter your User ID first, then save to load available App IDs.';
-const APP_ID_PATTERN = /^[A-Za-z0-9]{8}$/;
+const APP_ID_PATTERN = /^[A-Za-z0-9]{8,}$/;
 
 function isValidAppId(value) {
   if (!value || typeof value !== 'string') {
