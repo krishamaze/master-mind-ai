@@ -112,10 +112,10 @@ function validateAssignmentName(name) {
     return { valid: false, message: 'App ID must be alphanumeric.', normalizedName: '' };
   }
 
-  if (trimmedName.length !== 8) {
+  if (!/^[A-Za-z0-9]{8,}$/.test(trimmedName)) {
     return {
       valid: false,
-      message: 'App ID must be exactly 8 characters.',
+      message: 'App ID must be at least 8 characters.',
       normalizedName: ''
     };
   }
@@ -411,8 +411,7 @@ saveButton.addEventListener('click', async () => {
 
       const desiredAppId = normalizedName;
       const createdAssignment = await apiClient.createAssignment(baseUrl, {
-        name: desiredAppId,
-        app_id: desiredAppId
+        appid: desiredAppId
       });
 
       const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
