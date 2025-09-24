@@ -1,6 +1,8 @@
 export const ENVIRONMENTS = {
-  development: 'http://localhost:8000',
-  production: 'https://master-mind-ai.onrender.com'
+  development: 'http://localhost:8000', // FastAPI local testing
+  production: 'https://master-mind-ai.onrender.com', // Django production
+  fastapi: 'http://localhost:8000', // FastAPI explicit
+  django: 'https://master-mind-ai.onrender.com' // Django fallback
 };
 
 export function getSettings() {
