@@ -10,11 +10,13 @@ function setupDom() {
     </select>
     <select id="assignment-select"></select>
     <div id="assignment-loading" hidden></div>
-    <div id="new-assignment-container" hidden></div>
-    <input id="new-assignment-name" type="text" />
-    <div id="new-assignment-feedback" hidden></div>
+    <div id="new-assignment-container" hidden>
+      <input id="new-assignment-name" type="text" />
+      <div id="new-assignment-feedback" hidden></div>
+      <button id="createAppIdBtn">Create App ID</button>
+    </div>
     <input id="userId" type="text" />
-    <button id="save">Save</button>
+    <button id="saveUserIdBtn">Save User ID</button>
     <div id="connection"></div>
     <div id="status"></div>
   `;
@@ -92,7 +94,7 @@ describe('popup assignment creation flow', () => {
   test('creates a new app ID and saves the selection', async () => {
     const assignmentSelect = document.getElementById('assignment-select');
     const newAssignmentInput = document.getElementById('new-assignment-name');
-    const saveButton = document.getElementById('save');
+    const createButton = document.getElementById('createAppIdBtn');
 
     assignmentSelect.value = ADD_NEW_ASSIGNMENT_OPTION;
     assignmentSelect.dispatchEvent(new Event('change'));
@@ -100,7 +102,7 @@ describe('popup assignment creation flow', () => {
     newAssignmentInput.value = 'NewApp01';
     newAssignmentInput.dispatchEvent(new Event('input'));
 
-    saveButton.click();
+    createButton.click();
 
     await flushPromises();
     await flushPromises();

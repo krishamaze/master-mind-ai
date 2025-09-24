@@ -53,6 +53,16 @@ select {
 button {
   margin-top: 10px;
 }
+
+.user-section {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.app-section {
+  margin-top: 10px;
+}
 #status {
   margin-top: 10px;
   color: green;
