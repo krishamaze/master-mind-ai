@@ -7,33 +7,60 @@
 </head>
 <body>
   <h1>Master Mind AI</h1>
-  <label>Environment
+  <!-- Environment (Always editable) -->
+  <div class="form-group">
+    <label>Environment</label>
     <select id="environment">
       <option value="production">Production</option>
       <option value="development">Development</option>
     </select>
-  </label>
-  <div class="form-group user-section">
+  </div>
+
+  <!-- User ID with Save/Edit Pattern -->
+  <div class="form-group">
     <label for="userId">User ID</label>
-    <input id="userId" type="text" placeholder="Enter your user ID" />
-    <small>Enter your User ID first, then save to load available App IDs.</small>
-    <button id="saveUserIdBtn" type="button">Save User ID</button>
+    <div class="input-with-icons">
+      <input id="userId" type="text" placeholder="Enter your user ID" />
+      <div class="field-icons">
+        <span id="userId-saved" class="icon saved-icon" hidden>✅</span>
+        <span id="userId-edit" class="icon edit-icon" hidden>✏️</span>
+      </div>
+    </div>
+    <small>Enter your User ID to access your apps</small>
   </div>
-  <div class="form-group app-section">
+
+  <!-- App ID with Save/Edit Pattern -->
+  <div class="form-group">
     <label for="assignment-select">App ID</label>
-    <select id="assignment-select" required disabled>
-      <option value="">Save user ID to load app IDs</option>
-    </select>
-    <div id="assignment-loading" class="loading-indicator" hidden>Loading app IDs...</div>
+    <div class="input-with-icons">
+      <select id="assignment-select" disabled>
+        <option value="">Save User ID first</option>
+      </select>
+      <div class="field-icons">
+        <span id="appId-saved" class="icon saved-icon" hidden>✅</span>
+        <span id="appId-edit" class="icon edit-icon" hidden>✏️</span>
+      </div>
+    </div>
+    <div class="loading-indicator" id="assignment-loading" hidden>Loading...</div>
   </div>
-  <div class="form-group" id="new-assignment-container" hidden>
-    <label for="new-assignment-name">New app ID</label>
-    <input id="new-assignment-name" type="text" placeholder="App ID" />
-    <div id="new-assignment-feedback" class="validation-message" hidden></div>
-    <button id="createAppIdBtn" type="button">Create App ID</button>
+
+  <!-- New App Creation (Conditional) -->
+  <div id="new-assignment-container" class="form-group" hidden>
+    <label for="new-assignment-name">New App Name</label>
+    <div class="input-with-icons">
+      <input id="new-assignment-name" type="text" placeholder="Enter app name" />
+    </div>
+    <small>8+ alphanumeric characters</small>
+    <div class="validation-message" id="new-assignment-feedback" hidden></div>
   </div>
-  <div id="connection"></div>
-  <div id="status"></div>
+
+  <!-- Single Submit Button -->
+  <div class="submit-section">
+    <button id="submit" class="submit-button" disabled>Complete Setup</button>
+    <div id="status" hidden></div>
+  </div>
+
+  <div id="connection" class="connection-status"></div>
   <script type="module" src="popup.js"></script>
 </body>
 </html>
