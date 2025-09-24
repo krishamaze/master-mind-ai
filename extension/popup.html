@@ -13,13 +13,13 @@
       <option value="development">Development</option>
     </select>
   </label>
-  <div class="form-group">
+  <div class="form-group user-section">
     <label for="userId">User ID</label>
     <input id="userId" type="text" placeholder="Enter your user ID" />
     <small>Enter your User ID first, then save to load available App IDs.</small>
-    <button id="save">Save User ID</button>
+    <button id="saveUserIdBtn" type="button">Save User ID</button>
   </div>
-  <div class="form-group">
+  <div class="form-group app-section">
     <label for="assignment-select">App ID</label>
     <select id="assignment-select" required disabled>
       <option value="">Save user ID to load app IDs</option>
@@ -30,6 +30,7 @@
     <label for="new-assignment-name">New app ID</label>
     <input id="new-assignment-name" type="text" placeholder="App ID" />
     <div id="new-assignment-feedback" class="validation-message" hidden></div>
+    <button id="createAppIdBtn" type="button">Create App ID</button>
   </div>
   <div id="connection"></div>
   <div id="status"></div>

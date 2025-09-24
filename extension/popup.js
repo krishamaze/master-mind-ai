@@ -7,7 +7,8 @@ const assignmentLoadingEl = document.getElementById('assignment-loading');
 const userIdEl = document.getElementById('userId');
 const statusEl = document.getElementById('status');
 const connectionEl = document.getElementById('connection');
-const saveButton = document.getElementById('save');
+const saveUserIdBtn = document.getElementById('saveUserIdBtn');
+const createAppIdBtn = document.getElementById('createAppIdBtn');
 const newAssignmentContainer = document.getElementById('new-assignment-container');
 const newAssignmentInput = document.getElementById('new-assignment-name');
 const newAssignmentFeedback = document.getElementById('new-assignment-feedback');
@@ -42,6 +43,97 @@ function getAssignmentOptionValue(assignment) {
 
 let statusTimeoutId;
 let userIdSaved = false;
+let isSavingUserId = false;
+let isCreatingAppId = false;
+let saveUserIdButtonState = 'ready';
+let createAppIdButtonState = 'ready';
+
+function updateSaveUserIdButton(state) {
+  if (!saveUserIdBtn) {
+    return;
+  }
+
+  saveUserIdButtonState = state;
+
+  switch (state) {
+    case 'saving':
+      saveUserIdBtn.textContent = 'Saving...';
+      break;
+    case 'saved':
+      saveUserIdBtn.textContent = '✅ User ID Saved';
+      break;
+    case 'ready':
+    default:
+      saveUserIdBtn.textContent = 'Save User ID';
+      break;
+  }
+}
+
+function updateCreateAppIdButton(state) {
+  if (!createAppIdBtn) {
+    return;
+  }
+
+  createAppIdButtonState = state;
+
+  switch (state) {
+    case 'creating':
+      createAppIdBtn.textContent = 'Creating...';
+      break;
+    case 'created':
+      createAppIdBtn.textContent = '✅ App ID Created';
+      break;
+    case 'ready':
+    default:
+      createAppIdBtn.textContent = 'Create App ID';
+      break;
+  }
+}
+
+function refreshButtonStates() {
+  const trimmedUserId = userIdEl.value.trim();
+
+  if (saveUserIdBtn) {
+    if (isSavingUserId) {
+      saveUserIdBtn.disabled = true;
+      updateSaveUserIdButton('saving');
+    } else {
+      saveUserIdBtn.disabled = !trimmedUserId;
+      if (!trimmedUserId) {
+        updateSaveUserIdButton('ready');
+      } else if (userIdSaved) {
+        updateSaveUserIdButton('saved');
+      } else {
+        updateSaveUserIdButton('ready');
+      }
+    }
+  }
+
+  if (createAppIdBtn) {
+    const isAddingNewAssignment =
+      !assignmentEl.disabled && assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION;
+
+    if (!isAddingNewAssignment) {
+      createAppIdBtn.disabled = true;
+      if (!isCreatingAppId) {
+        updateCreateAppIdButton('ready');
+      }
+      return;
+    }
+
+    if (isCreatingAppId) {
+      createAppIdBtn.disabled = true;
+      updateCreateAppIdButton('creating');
+      return;
+    }
+
+    const { valid } = validateAssignmentName(newAssignmentInput?.value ?? '');
+    createAppIdBtn.disabled = !valid;
+    if (valid) {
+      updateCreateAppIdButton('ready');
+    }
+  }
+}
 
 function resetAssignmentDropdown(message) {
   assignmentEl.innerHTML = '';
@@ -91,6 +183,10 @@ function hideNewAssignmentInput() {
     newAssignmentInput.value = '';
   }
   setAssignmentNameFeedback('');
+  updateCreateAppIdButton('ready');
+  if (createAppIdBtn) {
+    createAppIdBtn.disabled = true;
+  }
 }
 
 function setAssignmentNameFeedback(message = '') {
@@ -186,42 +282,30 @@ function getFriendlyErrorMessage(error, fallback) {
   return fallback;
 }
 
-function updateSaveButtonState() {
+async function persistSelectedAppId(appId) {
   const userId = userIdEl.value.trim();
-  const selectedAssignment = assignmentEl.value;
-  const isAddingNewAssignment = selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION;
-  const newAssignmentName = newAssignmentInput?.value ?? '';
-
   if (!userId) {
-    saveButton.disabled = true;
-    saveButton.textContent = 'Save User ID';
     return;
   }
 
-  if (assignmentEl.disabled) {
-    saveButton.disabled = false;
-    saveButton.textContent = 'Save User ID';
-    return;
-  }
+  const environment = envEl.value;
 
-  if (isAddingNewAssignment) {
-    const { valid, message } = validateAssignmentName(newAssignmentName);
-    setAssignmentNameFeedback(message);
-    saveButton.disabled = !valid;
-    saveButton.textContent = 'Create App ID';
-    return;
+  try {
+    await setSettings({ environment, userId, appId });
+    userIdSaved = true;
+    if (appId) {
+      showStatus('App ID saved.');
+    } else {
+      showStatus('App ID cleared.');
+    }
+    updateConnection();
+  } catch (error) {
+    console.error('Failed to save app ID', error);
+    const message = getFriendlyErrorMessage(error, 'Failed to save app ID. Please try again.');
+    showStatus(message, true, { persist: true });
+  } finally {
+    refreshButtonStates();
   }
-
-  if (userIdSaved && !selectedAssignment) {
-    setAssignmentNameFeedback('');
-    saveButton.disabled = true;
-    saveButton.textContent = '✅ User ID Saved';
-    return;
-  }
-
-  setAssignmentNameFeedback('');
-  saveButton.disabled = !selectedAssignment;
-  saveButton.textContent = 'Save';
 }
 
 async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false } = {}) {
@@ -239,12 +323,12 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
     if (!silent) {
       showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
     }
-    updateSaveButtonState();
+    refreshButtonStates();
     return [];
   }
 
   toggleAssignmentLoading(true);
-  updateSaveButtonState();
+  refreshButtonStates();
 
   let loaded = false;
   try {
@@ -323,7 +407,7 @@ async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false }
   } finally {
     toggleAssignmentLoading(false);
     assignmentEl.disabled = !loaded;
-    updateSaveButtonState();
+    refreshButtonStates();
   }
 }
 
@@ -350,7 +434,7 @@ async function init() {
   }
 
   updateConnection();
-  updateSaveButtonState();
+  refreshButtonStates();
 }
 
 init();
@@ -367,12 +451,13 @@ envEl.addEventListener('change', () => {
   } else {
     setAssignmentPlaceholder('Save user ID to load app IDs');
     showStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
-    updateSaveButtonState();
+    refreshButtonStates();
   }
 });
 
-assignmentEl.addEventListener('change', () => {
-  const isAddingNewAssignment = assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION;
+assignmentEl.addEventListener('change', async () => {
+  const selectedValue = assignmentEl.value;
+  const isAddingNewAssignment = selectedValue === ADD_NEW_ASSIGNMENT_OPTION;
 
   if (isAddingNewAssignment) {
     if (newAssignmentContainer) {
@@ -386,117 +471,156 @@ assignmentEl.addEventListener('change', () => {
       showStatus('');
     }
     hideNewAssignmentInput();
+
+    if (selectedValue !== undefined) {
+      await persistSelectedAppId(selectedValue);
+    }
   }
 
-  updateSaveButtonState();
+  refreshButtonStates();
 });
 
-saveButton.addEventListener('click', async () => {
+saveUserIdBtn.addEventListener('click', async () => {
   const userId = userIdEl.value.trim();
 
+  if (!userId || isSavingUserId) {
+    refreshButtonStates();
+    return;
+  }
+
+  const environment = envEl.value;
+  const selectedAppId =
+    !assignmentEl.disabled && assignmentEl.value !== ADD_NEW_ASSIGNMENT_OPTION
+      ? assignmentEl.value
+      : '';
+
+  isSavingUserId = true;
+  updateSaveUserIdButton('saving');
+  refreshButtonStates();
+
+  try {
+    await setSettings({ environment, userId, appId: selectedAppId });
+    userIdSaved = true;
+
+    const shouldShowLoading = assignmentEl.disabled;
+    if (shouldShowLoading) {
+      showStatus('User ID saved. Loading app IDs...', false, { persist: true });
+    }
+
+    await loadAppIds(selectedAppId, {
+      userIdOverride: userId,
+      silent: !shouldShowLoading
+    });
+
+    if (!shouldShowLoading) {
+      showStatus(selectedAppId ? 'Settings saved.' : 'User ID saved.');
+    }
+
+    updateConnection();
+    updateSaveUserIdButton('saved');
+  } catch (error) {
+    console.error('Failed to save settings', error);
+    const errorMessage = getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
+    showStatus(errorMessage, true, { persist: true });
+    updateSaveUserIdButton('ready');
+  } finally {
+    isSavingUserId = false;
+    refreshButtonStates();
+  }
+});
+
+createAppIdBtn.addEventListener('click', async () => {
+  if (assignmentEl.value !== ADD_NEW_ASSIGNMENT_OPTION || isCreatingAppId) {
+    refreshButtonStates();
+    return;
+  }
+
+  const userId = userIdEl.value.trim();
   if (!userId) {
-    updateSaveButtonState();
+    showStatus(USER_ID_PROMPT_MESSAGE, true, { persist: true });
+    refreshButtonStates();
     return;
   }
 
   const environment = envEl.value;
   const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
-  const selectedAppId = assignmentEl.value;
-  const isAddingNewAssignment = selectedAppId === ADD_NEW_ASSIGNMENT_OPTION;
+  const rawAssignmentName = newAssignmentInput?.value ?? '';
+  const { valid, message, normalizedName } = validateAssignmentName(rawAssignmentName);
 
-  saveButton.disabled = true;
+  if (!valid) {
+    setAssignmentNameFeedback(message);
+    showStatus(message, true, { persist: true });
+    refreshButtonStates();
+    return;
+  }
+
+  isCreatingAppId = true;
+  updateCreateAppIdButton('creating');
+  refreshButtonStates();
 
   try {
-    if (assignmentEl.disabled) {
+    setAssignmentNameFeedback('');
+    showStatus('Creating app ID...', false, { persist: true });
+
+    const desiredAppId = normalizedName;
+    const createdAssignment = await apiClient.createAssignment(baseUrl, {
+      appid: desiredAppId
+    });
+
+    const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
+    const createdAssignmentAppId = isValidAppId(createdAssignment?.app_id)
+      ? createdAssignment.app_id
+      : desiredAppId;
+    const createdAssignmentName = createdAssignment?.name ?? desiredAppId;
+
+    hideNewAssignmentInput();
+
+    const preferredSelection = createdAssignmentAppId || createdAssignmentId;
+    await loadAppIds(preferredSelection, { userIdOverride: userId });
+
+    const optionValues = Array.from(assignmentEl.options)
+      .map(option => option.value)
+      .filter(value => value && value !== ADD_NEW_ASSIGNMENT_OPTION);
+
+    let appIdToSave = createdAssignmentAppId && optionValues.includes(createdAssignmentAppId)
+      ? createdAssignmentAppId
+      : '';
+
+    if (!appIdToSave && preferredSelection && optionValues.includes(preferredSelection)) {
+      appIdToSave = preferredSelection;
+    }
+
+    if (!appIdToSave) {
+      const fallbackName = createdAssignmentName;
+      if (fallbackName && optionValues.includes(fallbackName)) {
+        appIdToSave = fallbackName;
+      }
+    }
+
+    if (appIdToSave) {
+      const normalizedAppId = String(appIdToSave);
+      await setSettings({ environment, userId, appId: normalizedAppId });
+      assignmentEl.value = normalizedAppId;
+      showStatus('App ID created and saved.');
+    } else {
       await setSettings({ environment, userId, appId: '' });
-      userIdSaved = true;
-      showStatus('User ID saved. Loading app IDs...', false, { persist: true });
-      await loadAppIds('', { userIdOverride: userId });
-      updateConnection();
-      return;
-    }
-
-    if (isAddingNewAssignment) {
-      const rawAssignmentName = newAssignmentInput?.value ?? '';
-      const { valid, message, normalizedName } = validateAssignmentName(rawAssignmentName);
-      if (!valid) {
-        setAssignmentNameFeedback(message);
-        showStatus(message, true, { persist: true });
-        return;
-      }
-      setAssignmentNameFeedback('');
-      showStatus('Creating app ID...', false, { persist: true });
-
-      const desiredAppId = normalizedName;
-      const createdAssignment = await apiClient.createAssignment(baseUrl, {
-        appid: desiredAppId
+      updateCreateAppIdButton('ready');
+      showStatus('App ID created but could not be auto-selected. Please choose it manually.', true, {
+        persist: true
       });
-
-      const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
-      const createdAssignmentAppId = isValidAppId(createdAssignment?.app_id)
-        ? createdAssignment.app_id
-        : desiredAppId;
-      const createdAssignmentName = createdAssignment?.name ?? desiredAppId;
-      hideNewAssignmentInput();
-
-      const preferredSelection = createdAssignmentAppId || createdAssignmentId;
-      await loadAppIds(preferredSelection, { userIdOverride: userId });
-
-      const optionValues = Array.from(assignmentEl.options)
-        .map(option => option.value)
-        .filter(value => value && value !== ADD_NEW_ASSIGNMENT_OPTION);
-
-      let appIdToSave = createdAssignmentAppId && optionValues.includes(createdAssignmentAppId)
-        ? createdAssignmentAppId
-        : '';
-
-      if (!appIdToSave && preferredSelection && optionValues.includes(preferredSelection)) {
-        appIdToSave = preferredSelection;
-      }
-
-      if (!appIdToSave) {
-        const fallbackName = createdAssignmentName;
-        if (fallbackName && optionValues.includes(fallbackName)) {
-          appIdToSave = fallbackName;
-        }
-      }
-
-      if (appIdToSave) {
-        const normalizedAppId = String(appIdToSave);
-        await setSettings({ environment, userId, appId: normalizedAppId });
-        assignmentEl.value = normalizedAppId;
-        showStatus('App ID created and saved.');
-      } else {
-        await setSettings({ environment, userId, appId: '' });
-        showStatus('App ID created but could not be auto-selected. Please choose it manually.', true, {
-          persist: true
-        });
-        return;
-      }
-
-      userIdSaved = true;
-
-      updateConnection();
       return;
     }
 
-    if (!selectedAppId) {
-      showStatus('Select an app ID to save.', true);
-      return;
-    }
-
-    await setSettings({ environment, userId, appId: selectedAppId });
     userIdSaved = true;
-    showStatus('Saved');
     updateConnection();
   } catch (error) {
-    console.error('Failed to save settings', error);
-    const errorMessage = isAddingNewAssignment
-      ? getFriendlyErrorMessage(error, 'Unable to create app ID. Please try again.')
-      : getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
+    console.error('Failed to create app ID', error);
+    const errorMessage = getFriendlyErrorMessage(error, 'Unable to create app ID. Please try again.');
     showStatus(errorMessage, true, { persist: true });
+    updateCreateAppIdButton('ready');
   } finally {
-    updateSaveButtonState();
+    isCreatingAppId = false;
+    refreshButtonStates();
   }
 });
 
@@ -506,9 +630,17 @@ userIdEl.addEventListener('input', () => {
   setAssignmentPlaceholder('Save user ID to load app IDs');
   toggleAssignmentLoading(false);
   assignmentEl.disabled = true;
-  updateSaveButtonState();
+  refreshButtonStates();
 });
 
 newAssignmentInput?.addEventListener('input', () => {
-  updateSaveButtonState();
+  if (assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION) {
+    const { message } = validateAssignmentName(newAssignmentInput.value ?? '');
+    setAssignmentNameFeedback(message);
+  } else {
+    setAssignmentNameFeedback('');
+  }
+
+  updateCreateAppIdButton('ready');
+  refreshButtonStates();
 });
