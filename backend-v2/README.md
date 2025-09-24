@@ -4,7 +4,7 @@ This directory contains the experimental FastAPI implementation of the Master Mi
 
 ## Features
 
-- Health check and readiness endpoint
+- Lightweight health check endpoint that avoids Mem0 calls
 - User app ID discovery via Mem0
 - Assignment namespace initialisation without a relational database
 - Two-stage prompt enhancement using Mem0 memories and OpenAI chat completions

@@ -62,7 +62,6 @@ class HealthResponse(BaseModel):
 
     status: str
     service: str
-    mem0_connected: bool
     timestamp: datetime
 
 
