@@ -23,7 +23,7 @@ async def create_assignment(request: AssignmentCreateRequest) -> AssignmentRespo
 
     success = await service.create_assignment_namespace(
         user_id=request.user_id,
-        app_id=request.app_id,
+        app_id=request.appid,
         assignment_id=assignment_id,
     )
     if not success:
@@ -33,8 +33,7 @@ async def create_assignment(request: AssignmentCreateRequest) -> AssignmentRespo
 
     return AssignmentResponse(
         id=assignment_id,
-        name=request.name,
-        app_id=request.app_id,
+        appid=request.appid,
         owner_id=request.user_id,
         created_at=datetime.utcnow(),
     )

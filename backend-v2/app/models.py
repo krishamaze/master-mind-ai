@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field
 
 
 class UserRequest(BaseModel):
@@ -23,26 +23,19 @@ class AppIdsResponse(BaseModel):
 class AssignmentCreateRequest(BaseModel):
     """Payload for creating an assignment namespace."""
 
-    name: str = Field(..., min_length=8, max_length=8, pattern=r"^[A-Za-z0-9]{8}$")
-    app_id: str = Field(..., min_length=8, max_length=8, pattern=r"^[A-Za-z0-9]{8}$")
-    user_id: str = Field(..., min_length=1, max_length=255)
-
-    @field_validator("name")
-    @classmethod
-    def name_must_match_app_id(cls, value: str, info: ValidationInfo) -> str:
-        data = info.data or {}
-        app_id = data.get("app_id")
-        if app_id is not None and value != app_id:
-            raise ValueError("name must match app_id")
-        return value
+    appid: str = Field(
+        min_length=8,
+        pattern=r"^[A-Za-z0-9]{8,}$",
+        description="App ID for Mem0 (8+ alphanumeric characters)",
+    )
+    user_id: str = Field(description="User ID for Mem0")
 
 
 class AssignmentResponse(BaseModel):
     """Assignment metadata returned after namespace creation."""
 
     id: str
-    name: str
-    app_id: str
+    appid: str
     owner_id: str
     created_at: datetime
 
