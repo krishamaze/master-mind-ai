@@ -68,15 +68,29 @@ class APIClient {
         return this.request(`/api/v1/users/${encodedUserId}/app-ids`, { baseUrl });
     }
 
-    async createAssignment(baseUrl, { userId, appId } = {}) {
+    async createAssignment(baseUrl, identifiers = {}) {
         const payload = {};
+        const { userId, appId, user_id: snakeUserId, app_id: snakeAppId } = identifiers;
 
-        if (typeof userId === 'string' && userId.trim()) {
-            payload.user_id = userId.trim();
+        const normalizedUserId =
+            typeof userId === 'string' && userId.trim()
+                ? userId.trim()
+                : typeof snakeUserId === 'string' && snakeUserId.trim()
+                    ? snakeUserId.trim()
+                    : '';
+        const normalizedAppId =
+            typeof appId === 'string' && appId.trim()
+                ? appId.trim()
+                : typeof snakeAppId === 'string' && snakeAppId.trim()
+                    ? snakeAppId.trim()
+                    : '';
+
+        if (normalizedUserId) {
+            payload.user_id = normalizedUserId;
         }
 
-        if (typeof appId === 'string' && appId.trim()) {
-            payload.app_id = appId.trim();
+        if (normalizedAppId) {
+            payload.app_id = normalizedAppId;
         }
 
         return this.request('/api/v1/assignments/', {
