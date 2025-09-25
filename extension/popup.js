@@ -233,14 +233,15 @@ function ensureOptionExists(appId) {
   if (!assignmentEl) {
     return;
   }
-  const existing = Array.from(assignmentEl.options).find(option => option.value === appId);
+  const options = Array.from(assignmentEl.options ?? []);
+  const existing = options.find(option => option.value === appId);
   if (existing) {
     return;
   }
   const option = document.createElement('option');
   option.value = appId;
   option.textContent = appId;
-  const addOption = Array.from(assignmentEl.options).find(option => option.value === ADD_NEW_ASSIGNMENT_OPTION);
+  const addOption = options.find(option => option.value === ADD_NEW_ASSIGNMENT_OPTION);
   if (addOption) {
     assignmentEl.insertBefore(option, addOption);
   } else {
@@ -329,6 +330,7 @@ function updateSubmitButton() {
     submitBtn.textContent = 'Setup Complete';
     submitBtn.disabled = true;
     submitBtn.classList.add('saved');
+    hideNewAssignmentInput();
     return;
   }
 
@@ -466,7 +468,7 @@ async function handleSubmit() {
       }
 
       appIdToSave = normalizedName;
-      await apiClient.createAssignment(baseUrl, { userId: normalizedUserId, appId: appIdToSave });
+      await apiClient.createAssignment(baseUrl, { user_id: normalizedUserId, app_id: appIdToSave });
       ensureOptionExists(appIdToSave);
       setStatus('App ID created.');
     }
@@ -474,6 +476,7 @@ async function handleSubmit() {
     await setSettings({ environment, userId: normalizedUserId, appId: appIdToSave });
 
     lockAppSelection(appIdToSave);
+    hideNewAssignmentInput();
     state.setupComplete = true;
     setStatus('Setup complete.', false, { persist: true });
   } catch (error) {
@@ -552,7 +555,8 @@ async function init() {
     updateUserIdIcons();
     await loadAppIds(userId, appId);
 
-    if (appId && Array.from(assignmentEl.options).some(option => option.value === appId)) {
+    const options = Array.from(assignmentEl?.options ?? []);
+    if (appId && options.some(option => option.value === appId)) {
       lockAppSelection(appId);
       state.setupComplete = true;
       setStatus('Setup complete.', false, { persist: true });
