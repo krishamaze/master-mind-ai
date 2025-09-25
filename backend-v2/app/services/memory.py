@@ -53,7 +53,7 @@ class AsyncMemoryService:
 
         return {
             "id": assignment_id,
-            "appid": app_id,
+            "app_id": app_id,
             "user_id": user_id,
             "status": "created",
             "created_at": created_at,

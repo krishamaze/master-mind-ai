@@ -18,6 +18,6 @@ async def create_assignment(request: AssignmentCreateRequest) -> AssignmentRespo
     service = AsyncMemoryService()
     assignment = await service.create_assignment(
         user_id=request.user_id,
-        app_id=request.appid,
+        app_id=request.app_id,
     )
     return AssignmentResponse(**assignment)

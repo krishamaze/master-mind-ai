@@ -23,7 +23,7 @@ class AppIdsResponse(BaseModel):
 class AssignmentCreateRequest(BaseModel):
     """Payload for creating an assignment namespace."""
 
-    appid: str = Field(
+    app_id: str = Field(
         min_length=8,
         pattern=r"^[A-Za-z0-9]{8,}$",
         description="App ID for Mem0 (8+ alphanumeric characters)",
@@ -35,7 +35,7 @@ class AssignmentResponse(BaseModel):
     """Assignment metadata returned after creation."""
 
     id: str
-    appid: str
+    app_id: str
     user_id: str
     status: str
     created_at: datetime
