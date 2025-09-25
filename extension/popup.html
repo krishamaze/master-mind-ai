@@ -6,61 +6,102 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>Master Mind AI</h1>
-  <!-- Environment (Always editable) -->
-  <div class="form-group">
-    <label>Environment</label>
-    <select id="environment">
-      <option value="production">Production</option>
-      <option value="development">Development</option>
-    </select>
-  </div>
-
-  <!-- User ID with Save/Edit Pattern -->
-  <div class="form-group">
-    <label for="userId">User ID</label>
-    <div class="input-with-icons">
-      <input id="userId" type="text" placeholder="Enter your user ID" />
-      <div class="field-icons">
-        <span id="userId-saved" class="icon saved-icon" hidden>✅</span>
-        <span id="userId-edit" class="icon edit-icon" hidden>✏️</span>
-      </div>
-    </div>
-    <small>Enter your User ID to access your apps</small>
-  </div>
-
-  <!-- App ID with Save/Edit Pattern -->
-  <div class="form-group">
-    <label for="assignment-select">App ID</label>
-    <div class="input-with-icons">
-      <select id="assignment-select" disabled>
-        <option value="">Save User ID first</option>
+  <main id="popup-root" class="popup-root" role="form" aria-live="polite" aria-busy="false">
+    <h1>Master Mind AI</h1>
+    <!-- Environment (Always editable) -->
+    <div class="form-group">
+      <label for="environment">Environment</label>
+      <select id="environment" aria-label="Select environment">
+        <option value="production">Production</option>
+        <option value="development">Development</option>
       </select>
-      <div class="field-icons">
-        <span id="appId-saved" class="icon saved-icon" hidden>✅</span>
-        <span id="appId-edit" class="icon edit-icon" hidden>✏️</span>
+    </div>
+
+    <!-- User ID with Save/Edit Pattern -->
+    <div class="form-group">
+      <label for="userId">User ID</label>
+      <div class="input-with-icons">
+        <input
+          id="userId"
+          type="text"
+          placeholder="Enter your user ID"
+          aria-describedby="userId-help"
+          autocomplete="off"
+        />
+        <div class="field-icons">
+          <span id="userId-saved" class="icon saved-icon" hidden aria-hidden="true">✅</span>
+          <span
+            id="userId-edit"
+            class="icon edit-icon"
+            hidden
+            role="button"
+            tabindex="0"
+            aria-label="Edit saved user ID"
+          >✏️</span>
+        </div>
       </div>
+      <small id="userId-help">Enter your User ID to access your apps</small>
     </div>
-    <div class="loading-indicator" id="assignment-loading" hidden>Loading...</div>
-  </div>
 
-  <!-- New App Creation (Conditional) -->
-  <div id="new-assignment-container" class="form-group" hidden>
-    <label for="new-assignment-name">New App Name</label>
-    <div class="input-with-icons">
-      <input id="new-assignment-name" type="text" placeholder="Enter app name" />
+    <!-- App ID with Save/Edit Pattern -->
+    <div class="form-group">
+      <label for="assignment-select">App ID</label>
+      <div class="input-with-icons">
+        <select
+          id="assignment-select"
+          disabled
+          aria-controls="new-assignment-container"
+          aria-describedby="appId-help"
+        >
+          <option value="">Save User ID first</option>
+        </select>
+        <div class="field-icons">
+          <span id="appId-saved" class="icon saved-icon" hidden aria-hidden="true">✅</span>
+          <span
+            id="appId-edit"
+            class="icon edit-icon"
+            hidden
+            role="button"
+            tabindex="0"
+            aria-label="Edit saved app ID"
+          >✏️</span>
+        </div>
+      </div>
+      <small id="appId-help">Choose an existing app ID or create a new one</small>
+      <div class="loading-indicator" id="assignment-loading" hidden role="status" aria-live="polite">Loading...</div>
     </div>
-    <small>8+ alphanumeric characters</small>
-    <div class="validation-message" id="new-assignment-feedback" hidden></div>
+
+    <!-- New App Creation (Conditional) -->
+    <div id="new-assignment-container" class="form-group" hidden aria-live="assertive">
+      <label for="new-assignment-name">New App Name</label>
+      <div class="input-with-icons">
+        <input
+          id="new-assignment-name"
+          type="text"
+          placeholder="Enter app name"
+          aria-describedby="new-assignment-help new-assignment-feedback"
+          autocomplete="off"
+        />
+      </div>
+      <small id="new-assignment-help">8+ alphanumeric characters</small>
+      <div class="validation-message" id="new-assignment-feedback" hidden role="alert" aria-live="assertive"></div>
+    </div>
+
+    <!-- Single Submit Button -->
+    <div class="submit-section">
+      <button id="submit" class="submit-button" disabled aria-live="polite">Complete Setup</button>
+      <div id="status" hidden role="status" aria-live="polite"></div>
+    </div>
+
+    <div id="connection" class="connection-status" role="status" aria-live="polite"></div>
+  </main>
+
+  <div id="interaction-guard" class="interaction-guard" hidden aria-hidden="true">
+    <div class="interaction-guard__message" role="status" aria-live="assertive">Please wait...</div>
   </div>
 
-  <!-- Single Submit Button -->
-  <div class="submit-section">
-    <button id="submit" class="submit-button" disabled>Complete Setup</button>
-    <div id="status" hidden></div>
-  </div>
+  <div id="global-error-announcer" class="sr-only" role="alert" aria-live="assertive"></div>
 
-  <div id="connection" class="connection-status"></div>
   <script type="module" src="popup.js"></script>
 </body>
 </html>
