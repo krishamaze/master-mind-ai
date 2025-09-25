@@ -654,7 +654,8 @@ async function createNewApp(desiredAppId) {
 
     const createdAssignment = await runWithRetry(() =>
       apiClient.createAssignment(baseUrl, {
-        appid: desiredAppId
+        appid: desiredAppId,
+        user_id: normalized
       })
     );
 
