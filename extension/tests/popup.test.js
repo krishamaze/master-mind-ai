@@ -60,8 +60,8 @@ describe('popup assignment creation flow', () => {
     mockSetSettings = jest.fn().mockResolvedValue(undefined);
     createdAppId = '';
     mockCreateAssignment = jest.fn().mockImplementation((_baseUrl, payload) => {
-      createdAppId = payload.app_id;
-      return Promise.resolve({ id: 10, name: 'NewApp01', app_id: payload.app_id });
+      createdAppId = payload.appId;
+      return Promise.resolve({ id: 10, name: 'NewApp01', app_id: payload.appId });
     });
     mockFetchUserAppIds = jest
       .fn()
@@ -114,9 +114,9 @@ describe('popup assignment creation flow', () => {
 
     expect(mockCreateAssignment).toHaveBeenCalledTimes(1);
     const [, createPayload] = mockCreateAssignment.mock.calls[0];
-    expect(createPayload).toEqual({ app_id: 'NewApp01', user_id: 'user-123' });
+    expect(createPayload).toEqual({ appId: 'NewApp01', userId: 'user-123' });
 
-    expect(mockFetchUserAppIds).toHaveBeenCalledTimes(2);
+    expect(mockFetchUserAppIds).toHaveBeenCalledTimes(1);
     expect(mockFetchUserAppIds).toHaveBeenLastCalledWith('https://api.example', 'user-123');
 
     expect(mockSetSettings).toHaveBeenCalledWith({

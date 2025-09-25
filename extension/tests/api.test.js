@@ -39,10 +39,11 @@ describe('APIClient.createAssignment', () => {
     console.error = originalConsoleError;
   });
 
-  test('injects the stored user id into the assignment payload', async () => {
-    const payload = { app_id: 'ABCDEFGH', user_id: 'malicious-user' };
-
-    await apiClient.createAssignment('https://custom.example', payload);
+  test('sends trimmed identifiers in the payload', async () => {
+    await apiClient.createAssignment('https://custom.example', {
+      userId: ' user-123 ',
+      appId: ' NewApp01 '
+    });
 
     expect(mockGetSettings).toHaveBeenCalled();
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -50,13 +51,19 @@ describe('APIClient.createAssignment', () => {
     const [requestUrl, options] = fetch.mock.calls[0];
     expect(requestUrl).toBe('https://custom.example/api/v1/assignments/');
 
-    expect(options.headers['X-User-Id']).toBe('user-123');
-    expect(options.headers['X-App-Id']).toBe('app-xyz');
-
     const body = JSON.parse(options.body);
-    expect(body).toEqual({ app_id: 'ABCDEFGH', user_id: 'user-123' });
-    expect(payload.user_id).toBe('user-123');
-    expect(payload.app_id).toBe('ABCDEFGH');
+    expect(body).toEqual({ app_id: 'NewApp01', user_id: 'user-123' });
+  });
+
+  test('omits empty values from the payload', async () => {
+    await apiClient.createAssignment('https://custom.example', {
+      userId: '   ',
+      appId: 'NewApp01'
+    });
+
+    const [, options] = fetch.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body).toEqual({ app_id: 'NewApp01' });
   });
 
   test('falls back to the configured base URL when none is provided', async () => {
@@ -66,7 +73,7 @@ describe('APIClient.createAssignment', () => {
       apiBaseUrl: 'https://fallback.example'
     });
 
-    await apiClient.createAssignment(undefined, { app_id: 'HGFEDCBA' });
+    await apiClient.createAssignment(undefined, { userId: 'user-abc', appId: 'HGFEDCBA' });
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [requestUrl, options] = fetch.mock.calls[0];

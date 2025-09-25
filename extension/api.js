@@ -68,58 +68,20 @@ class APIClient {
         return this.request(`/api/v1/users/${encodedUserId}/app-ids`, { baseUrl });
     }
 
-    async createAssignment(baseUrl, payload = {}) {
-        const { userId } = await getSettings();
-        const normalizedPayload = { ...payload };
+    async createAssignment(baseUrl, { userId, appId } = {}) {
+        const payload = {};
 
-        const providedUserId =
-            typeof normalizedPayload.user_id === 'string'
-                ? normalizedPayload.user_id.trim()
-                : '';
-
-        const derivedAppId = (() => {
-            if (typeof normalizedPayload.app_id === 'string' && normalizedPayload.app_id.trim()) {
-                return normalizedPayload.app_id.trim();
-            }
-            if (typeof normalizedPayload.name === 'string' && normalizedPayload.name.trim()) {
-                return normalizedPayload.name.trim();
-            }
-            return '';
-        })();
-
-        if (derivedAppId) {
-            normalizedPayload.app_id = derivedAppId;
-        } else {
-            delete normalizedPayload.app_id;
-        }
-
-        if (userId && userId.trim()) {
-            normalizedPayload.user_id = userId.trim();
-        } else if (providedUserId) {
-            normalizedPayload.user_id = providedUserId;
-        } else {
-            delete normalizedPayload.user_id;
-        }
-
-        delete normalizedPayload.name;
-
-        if (derivedAppId) {
-            payload.app_id = derivedAppId;
-        } else {
-            delete payload.app_id;
-        }
-        if (userId && userId.trim()) {
+        if (typeof userId === 'string' && userId.trim()) {
             payload.user_id = userId.trim();
-        } else if (providedUserId) {
-            payload.user_id = providedUserId;
-        } else {
-            delete payload.user_id;
         }
-        delete payload.name;
+
+        if (typeof appId === 'string' && appId.trim()) {
+            payload.app_id = appId.trim();
+        }
 
         return this.request('/api/v1/assignments/', {
             method: 'POST',
-            body: JSON.stringify(normalizedPayload),
+            body: JSON.stringify(payload),
             baseUrl
         });
     }
