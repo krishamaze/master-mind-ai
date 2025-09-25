@@ -20,297 +20,94 @@ const userIdEditIcon = document.getElementById('userId-edit');
 const appIdSavedIcon = document.getElementById('appId-saved');
 const appIdEditIcon = document.getElementById('appId-edit');
 
-const cleanupCallbacks = [];
-
-const FormPhase = Object.freeze({
-  INITIALIZING: 'initializing',
-  IDLE: 'idle',
-  LOADING: 'loading',
-  SAVING: 'saving',
-  ERROR: 'error'
-});
-
-function createFormStateMachine() {
-  const state = {
-    phase: FormPhase.INITIALIZING,
-    context: {
-      fields: {
-        userId: { saved: false, editing: true, locked: false },
-        appId: { saved: false, editing: false, locked: true }
-      },
-      pendingOps: new Set(),
-      isBusy: false,
-      busyReason: null,
-      lastError: null
-    }
-  };
-
-  const listeners = new Set();
-
-  function snapshot() {
-    const { fields, pendingOps, ...rest } = state.context;
-    const clonedFields = Object.fromEntries(
-      Object.entries(fields).map(([key, value]) => [key, { ...value }])
-    );
-    return {
-      phase: state.phase,
-      context: {
-        ...rest,
-        fields: clonedFields,
-        pendingOps: Array.from(pendingOps)
-      }
-    };
-  }
-
-  function notify() {
-    const nextState = snapshot();
-    listeners.forEach(listener => {
-      try {
-        listener(nextState);
-      } catch (error) {
-        console.error('State listener failed', error);
-      }
-    });
-  }
-
-  function commit(mutator) {
-    mutator(state);
-    notify();
-  }
-
-  return {
-    getState: snapshot,
-    subscribe(listener) {
-      listeners.add(listener);
-      listener(snapshot());
-      return () => listeners.delete(listener);
-    },
-    setPhase(phase) {
-      commit(current => {
-        current.phase = phase;
-      });
-    },
-    updateField(fieldName, updates) {
-      commit(current => {
-        const fields = { ...current.context.fields };
-        const currentField = fields[fieldName] ?? {};
-        fields[fieldName] = { ...currentField, ...updates };
-        current.context = { ...current.context, fields };
-      });
-    },
-    beginOperation(name) {
-      commit(current => {
-        const pendingOps = new Set(current.context.pendingOps);
-        pendingOps.add(name);
-        const phase = name.includes('load') ? FormPhase.LOADING : FormPhase.SAVING;
-        current.phase = phase;
-        current.context = {
-          ...current.context,
-          pendingOps,
-          isBusy: true,
-          busyReason: name,
-          lastError: null
-        };
-      });
-    },
-    endOperation(name) {
-      commit(current => {
-        const pendingOps = new Set(current.context.pendingOps);
-        pendingOps.delete(name);
-        const isBusy = pendingOps.size > 0;
-        current.context = {
-          ...current.context,
-          pendingOps,
-          isBusy,
-          busyReason: isBusy ? Array.from(pendingOps).at(-1) : null
-        };
-        if (!isBusy && current.phase !== FormPhase.ERROR) {
-          current.phase = FormPhase.IDLE;
-        }
-      });
-    },
-    setError(message) {
-      commit(current => {
-        current.phase = FormPhase.ERROR;
-        current.context = { ...current.context, lastError: message };
-      });
-    },
-    clearError() {
-      commit(current => {
-        current.context = { ...current.context, lastError: null };
-        if ((current.context.pendingOps?.size ?? 0) === 0) {
-          current.phase = FormPhase.IDLE;
-        }
-      });
-    }
-  };
-}
-
-const stateMachine = createFormStateMachine();
-
 const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
 const USER_ID_PROMPT_MESSAGE = 'Enter your User ID first, then save to load available App IDs.';
 const APP_ID_PATTERN = /^[A-Za-z0-9]{8,}$/;
+const USER_ID_PATTERN = /^[A-Za-z0-9._-]{4,}$/;
 
+const formState = {
+  busy: false,
+  busyReason: '',
+  error: '',
+  fields: {
+    userId: { saved: false, editing: true },
+    appId: { saved: false, editing: false }
+  }
+};
+
+const busyOperations = new Set();
 const fieldElements = {
   userId: userIdEl,
   appId: assignmentEl
 };
-
 const savedIcons = {
   userId: userIdSavedIcon,
   appId: appIdSavedIcon
 };
-
 const editIcons = {
   userId: userIdEditIcon,
   appId: appIdEditIcon
 };
 
-function registerCleanup(callback) {
-  if (typeof callback === 'function') {
-    cleanupCallbacks.push(callback);
-  }
-}
-
-function runCleanup() {
-  while (cleanupCallbacks.length) {
-    const cleanup = cleanupCallbacks.pop();
-    try {
-      cleanup();
-    } catch (error) {
-      console.error('Cleanup failed', error);
-    }
-  }
-}
-
-function addManagedEventListener(target, type, listener, options) {
-  if (!target || !target.addEventListener) {
-    return () => {};
-  }
-
-  target.addEventListener(type, listener, options);
-  const cleanup = () => {
-    target.removeEventListener(type, listener, options);
-  };
-
-  registerCleanup(cleanup);
-  return cleanup;
-}
-
-function getFieldState(fieldName) {
-  return stateMachine.getState().context.fields[fieldName] ?? {
-    saved: false,
-    editing: false,
-    locked: false
-  };
-}
-
-function updateFieldState(fieldName, updates) {
-  stateMachine.updateField(fieldName, updates);
-}
+let statusTimeoutId = null;
+let lastLoadedUserId = '';
+let isSubmitting = false;
+let loadRequestToken = 0;
+let scheduledLoadTimer = null;
 
 function wait(delay) {
   return new Promise(resolve => setTimeout(resolve, delay));
 }
 
-const DEBOUNCE_CANCELLED_MESSAGE = 'DEBOUNCED_CANCELLED';
-
-function createDebouncedAsync(fn, delay) {
-  let timerId = null;
-  let pendingReject = null;
-
-  const debounced = (...args) =>
-    new Promise((resolve, reject) => {
-      if (timerId) {
-        clearTimeout(timerId);
-        timerId = null;
-      }
-
-      if (pendingReject) {
-        pendingReject(new Error(DEBOUNCE_CANCELLED_MESSAGE));
-        pendingReject = null;
-      }
-
-      pendingReject = reject;
-
-      timerId = setTimeout(async () => {
-        timerId = null;
-        pendingReject = null;
-        try {
-          const result = await fn(...args);
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      }, delay);
-    });
-
-  debounced.cancel = () => {
-    if (timerId) {
-      clearTimeout(timerId);
-      timerId = null;
-    }
-    if (pendingReject) {
-      pendingReject(new Error(DEBOUNCE_CANCELLED_MESSAGE));
-      pendingReject = null;
-    }
-  };
-
-  return debounced;
-}
-
-async function retryAsync(fn, { retries = 2, delay = 300 } = {}) {
+async function runWithRetry(fn, { retries = 2, baseDelay = 200 } = {}) {
   let attempt = 0;
   let lastError;
-
   while (attempt <= retries) {
     try {
-      return await fn(attempt);
+      return await fn();
     } catch (error) {
       lastError = error;
       if (attempt === retries) {
         break;
       }
-      await wait(delay * (attempt + 1));
+      await wait(baseDelay * (attempt + 1));
       attempt += 1;
     }
   }
-
   throw lastError;
 }
 
-async function withSettingsTransaction(work) {
-  const snapshot = await getSettings();
-  try {
-    return await work(snapshot);
-  } catch (error) {
-    await retryAsync(() => setSettings(snapshot)).catch(rollbackError => {
-      console.error('Rollback failed', rollbackError);
-    });
-    throw error;
-  }
-}
+function updateBusyState() {
+  const isBusy = busyOperations.size > 0;
+  const activeReason = isBusy ? Array.from(busyOperations).at(-1) ?? '' : '';
 
-function applyStateToUI({ context }) {
-  const isBusy = Boolean(context.isBusy);
-  if (popupRootEl) {
-    popupRootEl.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+  if (formState.busy === isBusy && formState.busyReason === activeReason) {
+    return;
   }
+
+  formState.busy = isBusy;
+  formState.busyReason = activeReason;
+
+  popupRootEl?.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+
   if (interactionGuardEl) {
-    interactionGuardEl.hidden = !isBusy;
-    interactionGuardEl.setAttribute('aria-hidden', isBusy ? 'false' : 'true');
+    const shouldHide = !isBusy;
+    if (interactionGuardEl.hidden !== shouldHide) {
+      interactionGuardEl.hidden = shouldHide;
+    }
+    interactionGuardEl.setAttribute('aria-hidden', shouldHide ? 'true' : 'false');
   }
 }
 
-const unsubscribeState = stateMachine.subscribe(applyStateToUI);
-registerCleanup(unsubscribeState);
+function beginBusy(key) {
+  busyOperations.add(key);
+  updateBusyState();
+}
 
-let statusTimeoutId = null;
-let lastLoadedUserId = '';
-let isSubmitting = false;
-
-registerCleanup(clearStatusTimer);
+function endBusy(key) {
+  busyOperations.delete(key);
+  updateBusyState();
+}
 
 function clearStatusTimer() {
   if (statusTimeoutId) {
@@ -320,6 +117,10 @@ function clearStatusTimer() {
 }
 
 function setStatus(message, isError = false, { persist = false } = {}) {
+  if (!statusEl) {
+    return;
+  }
+
   statusEl.textContent = message;
   statusEl.style.color = isError ? '#d93025' : '#198754';
   statusEl.hidden = !message;
@@ -328,41 +129,49 @@ function setStatus(message, isError = false, { persist = false } = {}) {
   statusEl.setAttribute('aria-live', isError ? 'assertive' : 'polite');
 
   if (globalErrorAnnouncer) {
-    if (isError && message) {
-      globalErrorAnnouncer.textContent = message;
-    } else if (!message) {
-      globalErrorAnnouncer.textContent = '';
-    }
+    globalErrorAnnouncer.textContent = isError ? message : '';
   }
 
   clearStatusTimer();
 
   if (message && !isError && !persist) {
     statusTimeoutId = setTimeout(() => {
-      statusEl.textContent = '';
-      statusEl.hidden = true;
-      statusEl.dataset.statusType = '';
+      if (statusEl.dataset.statusType !== 'error') {
+        statusEl.textContent = '';
+        statusEl.hidden = true;
+        statusEl.dataset.statusType = '';
+      }
       statusTimeoutId = null;
     }, 2000);
   }
 }
 
-function announceGlobalError(message) {
-  if (!message) {
+function setError(message) {
+  formState.error = message;
+  if (message) {
+    setStatus(message, true, { persist: true });
+  } else if (statusEl?.dataset?.statusType === 'error') {
+    setStatus('');
+  }
+}
+
+function setFieldState(fieldName, updates) {
+  if (!formState.fields[fieldName]) {
     return;
   }
-  setStatus(message, true, { persist: true });
-  stateMachine.setError(message);
+  formState.fields[fieldName] = {
+    ...formState.fields[fieldName],
+    ...updates
+  };
 }
 
 function lockField(fieldName, { saved = false } = {}) {
   const field = fieldElements[fieldName];
-
   if (!field) {
     return;
   }
 
-  updateFieldState(fieldName, { saved, editing: false, locked: true });
+  setFieldState(fieldName, { saved, editing: false });
 
   if (fieldName === 'userId') {
     field.readOnly = true;
@@ -384,12 +193,11 @@ function lockField(fieldName, { saved = false } = {}) {
 
 function unlockField(fieldName) {
   const field = fieldElements[fieldName];
-
   if (!field) {
     return;
   }
 
-  updateFieldState(fieldName, { saved: false, editing: true, locked: false });
+  setFieldState(fieldName, { saved: false, editing: true });
 
   if (fieldName === 'userId') {
     field.readOnly = false;
@@ -417,6 +225,9 @@ function unlockField(fieldName) {
 }
 
 function resetAssignmentDropdown(message) {
+  if (!assignmentEl) {
+    return;
+  }
   assignmentEl.innerHTML = '';
   const option = document.createElement('option');
   option.value = '';
@@ -433,8 +244,8 @@ function toggleAssignmentLoading(isLoading) {
   if (assignmentLoadingEl) {
     assignmentLoadingEl.hidden = !isLoading;
   }
-  assignmentEl.classList.toggle('loading', isLoading);
-  assignmentEl.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+  assignmentEl?.classList.toggle('loading', isLoading);
+  assignmentEl?.setAttribute('aria-busy', isLoading ? 'true' : 'false');
 }
 
 function hideNewAssignmentInput() {
@@ -443,6 +254,7 @@ function hideNewAssignmentInput() {
   }
   if (newAssignmentInput) {
     newAssignmentInput.value = '';
+    newAssignmentInput.setAttribute('aria-invalid', 'false');
   }
   setAssignmentNameFeedback('');
 }
@@ -450,16 +262,32 @@ function hideNewAssignmentInput() {
 function resetAppField() {
   hideNewAssignmentInput();
   toggleAssignmentLoading(false);
+  setFieldState('appId', { saved: false, editing: false });
   resetAssignmentDropdown('Save User ID first');
-  assignmentEl.disabled = true;
-  updateFieldState('appId', { saved: false, editing: false, locked: true });
+  if (assignmentEl) {
+    assignmentEl.disabled = true;
+  }
   if (appIdSavedIcon) {
     appIdSavedIcon.hidden = true;
   }
   if (appIdEditIcon) {
     appIdEditIcon.hidden = true;
   }
+  updateSubmitButton();
+}
 
+function ensureAppFieldEditable() {
+  if (!assignmentEl) {
+    return;
+  }
+  assignmentEl.disabled = false;
+  setFieldState('appId', { editing: true });
+  if (appIdSavedIcon) {
+    appIdSavedIcon.hidden = true;
+  }
+  if (appIdEditIcon) {
+    appIdEditIcon.hidden = true;
+  }
   updateSubmitButton();
 }
 
@@ -490,6 +318,20 @@ function validateAssignmentName(name) {
   return { valid: true, message: '', normalizedName: trimmedName };
 }
 
+function validateUserId(value) {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) {
+    return { valid: false, message: 'User ID is required.' };
+  }
+  if (!USER_ID_PATTERN.test(trimmed)) {
+    return {
+      valid: false,
+      message: 'User ID must be 4+ characters using letters, numbers, dots, underscores, or hyphens.'
+    };
+  }
+  return { valid: true, message: '', normalized: trimmed };
+}
+
 function setAssignmentNameFeedback(message = '') {
   if (!newAssignmentFeedback) {
     return;
@@ -517,7 +359,6 @@ function extractErrorMessage(error) {
   }
 
   const trimmedMessage = baseMessage.trim();
-
   if (!trimmedMessage) {
     return '';
   }
@@ -563,11 +404,7 @@ function updateSubmitButton() {
     return;
   }
 
-  const { context } = stateMachine.getState();
-  const userFieldState = context.fields.userId;
-  const appFieldState = context.fields.appId;
-
-  if (isSubmitting || context.isBusy) {
+  if (isSubmitting) {
     submitBtn.textContent = 'Saving...';
     submitBtn.disabled = true;
     submitBtn.classList.remove('saved');
@@ -579,7 +416,7 @@ function updateSubmitButton() {
   const isAddingNewAssignment = selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION;
   const { valid: newAssignmentValid } = validateAssignmentName(newAssignmentInput?.value ?? '');
 
-  const allSaved = userFieldState.saved && appFieldState.saved;
+  const allSaved = formState.fields.userId.saved && formState.fields.appId.saved;
 
   if (allSaved) {
     submitBtn.textContent = 'Saved ✅';
@@ -591,9 +428,9 @@ function updateSubmitButton() {
   submitBtn.classList.remove('saved');
 
   const hasAppSelection = Boolean(selectedAssignment) && selectedAssignment !== ADD_NEW_ASSIGNMENT_OPTION;
-  const needsUserIdSave = !userFieldState.saved;
+  const needsUserIdSave = !formState.fields.userId.saved;
   const needsAppIdSave =
-    !appFieldState.saved &&
+    !formState.fields.appId.saved &&
     (selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION || hasAppSelection || (!assignmentEl.disabled && assignmentEl.options.length > 0));
 
   const hasWorkToDo = needsUserIdSave || needsAppIdSave;
@@ -608,163 +445,147 @@ function updateSubmitButton() {
   submitBtn.disabled = !(hasWorkToDo && userReady && appReady);
 }
 
-function ensureAppFieldEditable() {
-  assignmentEl.disabled = false;
-  updateFieldState('appId', { editing: true, locked: false });
-  if (appIdSavedIcon) {
-    appIdSavedIcon.hidden = true;
+async function loadAppIds(selectedAppId = '', { userIdOverride, silent = false } = {}) {
+  const environment = envEl.value;
+  const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
+  const activeUserId = (userIdOverride ?? userIdEl.value ?? '').trim();
+  const requestToken = ++loadRequestToken;
+  const busyKey = `load-apps-${requestToken}`;
+
+  hideNewAssignmentInput();
+  setFieldState('appId', { saved: false });
+
+  if (!activeUserId) {
+    resetAppField();
+    if (!silent) {
+      setStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
+    }
+    updateSubmitButton();
+    return [];
   }
-  if (appIdEditIcon) {
-    appIdEditIcon.hidden = true;
-  }
+
+  beginBusy(busyKey);
+  toggleAssignmentLoading(true);
+  assignmentEl.disabled = true;
+  setFieldState('appId', { editing: false });
   updateSubmitButton();
-}
 
-const loadAppIds = (() => {
-  const performLoad = async (selectedAppId = '', { userIdOverride, silent = false } = {}) => {
-    const environment = envEl.value;
-    const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
-    const activeUserId = (userIdOverride ?? userIdEl.value ?? '').trim();
+  let loaded = false;
 
-    hideNewAssignmentInput();
-    updateFieldState('appId', { saved: false });
-
-    if (!activeUserId) {
-      resetAppField();
-      if (!silent) {
-        setStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
-      }
-      updateSubmitButton();
+  try {
+    const response = await runWithRetry(() => apiClient.fetchUserAppIds(baseUrl, activeUserId));
+    if (requestToken !== loadRequestToken) {
       return [];
     }
 
-    const operationKey = 'load-app-ids';
-    stateMachine.beginOperation(operationKey);
-    toggleAssignmentLoading(true);
-    assignmentEl.disabled = true;
-    updateFieldState('appId', { editing: false, locked: true });
-    updateSubmitButton();
+    const rawAppIds = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.app_ids)
+        ? response.app_ids
+        : [];
 
-    let loaded = false;
-
-    try {
-      const response = await retryAsync(() => apiClient.fetchUserAppIds(baseUrl, activeUserId));
-      const rawAppIds = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.app_ids)
-          ? response.app_ids
-          : [];
-
-      const seen = new Set();
-      const appIds = [];
-      rawAppIds.forEach(item => {
-        if (typeof item !== 'string') {
-          return;
-        }
-        const trimmed = item.trim();
-        if (!trimmed || seen.has(trimmed)) {
-          return;
-        }
-        seen.add(trimmed);
-        appIds.push(trimmed);
-      });
-
-      assignmentEl.innerHTML = '';
-
-      if (appIds.length) {
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = '';
-        placeholderOption.textContent = 'Choose app ID...';
-        assignmentEl.appendChild(placeholderOption);
-      } else {
-        setAssignmentPlaceholder('No app IDs found. Create a new one to get started.');
+    const seen = new Set();
+    const appIds = [];
+    rawAppIds.forEach(item => {
+      if (typeof item !== 'string') {
+        return;
       }
+      const trimmed = item.trim();
+      if (!trimmed || seen.has(trimmed)) {
+        return;
+      }
+      seen.add(trimmed);
+      appIds.push(trimmed);
+    });
 
-      appIds.forEach(appId => {
-        const option = document.createElement('option');
-        option.value = appId;
-        option.textContent = appId;
-        assignmentEl.appendChild(option);
-      });
+    assignmentEl.innerHTML = '';
 
-      const addOption = document.createElement('option');
-      addOption.value = ADD_NEW_ASSIGNMENT_OPTION;
-      addOption.textContent = 'Add New App ID';
-      assignmentEl.appendChild(addOption);
+    if (appIds.length) {
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = 'Choose app ID...';
+      assignmentEl.appendChild(placeholderOption);
+    } else {
+      setAssignmentPlaceholder('No app IDs found. Create a new one to get started.');
+    }
 
-      if (selectedAppId) {
-        const normalized = String(selectedAppId);
-        if (appIds.includes(normalized)) {
-          assignmentEl.value = normalized;
-        } else {
-          assignmentEl.value = '';
-          if (!silent) {
-            const unavailableMessage = 'Saved app ID is unavailable. Please choose another app ID.';
-            setStatus(unavailableMessage, true, { persist: true });
-            stateMachine.setError(unavailableMessage);
-          }
-        }
+    appIds.forEach(appId => {
+      const option = document.createElement('option');
+      option.value = appId;
+      option.textContent = appId;
+      assignmentEl.appendChild(option);
+    });
+
+    const addOption = document.createElement('option');
+    addOption.value = ADD_NEW_ASSIGNMENT_OPTION;
+    addOption.textContent = 'Add New App ID';
+    assignmentEl.appendChild(addOption);
+
+    if (selectedAppId) {
+      const normalized = String(selectedAppId);
+      if (appIds.includes(normalized)) {
+        assignmentEl.value = normalized;
       } else {
         assignmentEl.value = '';
-      }
-
-      loaded = true;
-      lastLoadedUserId = activeUserId;
-
-      if (!silent) {
-        setStatus(`Loaded ${appIds.length} app ID${appIds.length === 1 ? '' : 's'}`);
-      }
-
-      ensureAppFieldEditable();
-      stateMachine.clearError();
-      return appIds;
-    } catch (error) {
-      console.error('Failed to load app IDs', error);
-      setAssignmentPlaceholder('Choose app ID...');
-      const message = getFriendlyErrorMessage(error, 'Unable to load app IDs. Please try again.');
-      if (!silent) {
-        setStatus(message, true, { persist: true });
-      }
-      stateMachine.setError(message);
-      return [];
-    } finally {
-      toggleAssignmentLoading(false);
-      assignmentEl.disabled = !loaded;
-      if (!loaded) {
-        updateFieldState('appId', { editing: false, locked: true });
-      } else {
-        updateFieldState('appId', { editing: true, locked: false });
-      }
-      updateSubmitButton();
-      stateMachine.endOperation(operationKey);
-    }
-  };
-
-  const debouncedLoader = createDebouncedAsync((selectedAppId, options) => performLoad(selectedAppId, options), 300);
-  registerCleanup(() => debouncedLoader.cancel());
-
-  return (selectedAppId = '', options = {}) => {
-    const { debounce = false, ...rest } = options ?? {};
-    if (debounce) {
-      return debouncedLoader(selectedAppId, rest).catch(error => {
-        if (error?.message === DEBOUNCE_CANCELLED_MESSAGE) {
-          return [];
+        if (!silent) {
+          setStatus('Saved app ID is unavailable. Please choose another app ID.', true, {
+            persist: true
+          });
         }
-        throw error;
-      });
+      }
+    } else {
+      assignmentEl.value = '';
     }
-    return performLoad(selectedAppId, rest);
-  };
-})();
+
+    loaded = true;
+    lastLoadedUserId = activeUserId;
+
+    if (!silent) {
+      setStatus(`Loaded ${appIds.length} app ID${appIds.length === 1 ? '' : 's'}`);
+    }
+
+    ensureAppFieldEditable();
+    setError('');
+    return appIds;
+  } catch (error) {
+    console.error('Failed to load app IDs', error);
+    setAssignmentPlaceholder('Choose app ID...');
+    const message = getFriendlyErrorMessage(error, 'Unable to load app IDs. Please try again.');
+    if (!silent) {
+      setError(message);
+    }
+    return [];
+  } finally {
+    toggleAssignmentLoading(false);
+    assignmentEl.disabled = !loaded;
+    if (!loaded) {
+      setFieldState('appId', { editing: false });
+    } else {
+      setFieldState('appId', { editing: true });
+    }
+    updateSubmitButton();
+    endBusy(busyKey);
+  }
+}
+
+function scheduleAppIdLoad(selectedAppId = '', options = {}) {
+  if (scheduledLoadTimer) {
+    clearTimeout(scheduledLoadTimer);
+  }
+  scheduledLoadTimer = setTimeout(() => {
+    loadAppIds(selectedAppId, options);
+    scheduledLoadTimer = null;
+  }, 250);
+}
 
 async function saveUserId(userId, { appIdForSettings = '' } = {}) {
   const environment = envEl.value;
-  const operationKey = 'save-user';
+  const busyKey = 'save-user';
 
-  stateMachine.beginOperation(operationKey);
+  beginBusy(busyKey);
 
   try {
-    await retryAsync(() => setSettings({ environment, userId, appId: appIdForSettings }));
+    await runWithRetry(() => setSettings({ environment, userId, appId: appIdForSettings }));
     lockField('userId', { saved: true });
     const shouldReload = lastLoadedUserId !== userId;
     lastLoadedUserId = userId;
@@ -773,69 +594,69 @@ async function saveUserId(userId, { appIdForSettings = '' } = {}) {
     }
     const successMessage = appIdForSettings ? 'Settings saved.' : 'User ID saved.';
     setStatus(successMessage);
+    setError('');
     updateConnection();
-    stateMachine.clearError();
   } catch (error) {
     console.error('Failed to save settings', error);
     const errorMessage = getFriendlyErrorMessage(error, 'Failed to save settings. Please try again.');
-    setStatus(errorMessage, true, { persist: true });
     unlockField('userId');
-    stateMachine.setError(errorMessage);
+    setError(errorMessage);
     throw error;
   } finally {
-    stateMachine.endOperation(operationKey);
+    endBusy(busyKey);
   }
 }
 
 async function saveAppSelection(appId) {
-  const userId = userIdEl.value.trim();
-  if (!userId) {
-    setStatus(USER_ID_PROMPT_MESSAGE, true, { persist: true });
+  const { valid, message, normalized } = validateUserId(userIdEl.value);
+  if (!valid) {
+    setError(message);
     return;
   }
 
   const environment = envEl.value;
-  const operationKey = 'save-app';
+  const busyKey = 'save-app';
 
-  stateMachine.beginOperation(operationKey);
+  beginBusy(busyKey);
 
   try {
     assignmentEl.value = appId;
-    await retryAsync(() => setSettings({ environment, userId, appId }));
+    await runWithRetry(() => setSettings({ environment, userId: normalized, appId }));
     lockField('appId', { saved: true });
     setStatus('App ID saved.');
-    stateMachine.clearError();
+    setError('');
   } catch (error) {
     console.error('Failed to save app ID', error);
     const message = getFriendlyErrorMessage(error, 'Failed to save app ID. Please try again.');
-    setStatus(message, true, { persist: true });
-    stateMachine.setError(message);
+    setError(message);
     throw error;
   } finally {
-    stateMachine.endOperation(operationKey);
+    endBusy(busyKey);
   }
 }
 
 async function createNewApp(desiredAppId) {
-  const userId = userIdEl.value.trim();
-  if (!userId) {
-    setStatus(USER_ID_PROMPT_MESSAGE, true, { persist: true });
+  const { valid, message, normalized } = validateUserId(userIdEl.value);
+  if (!valid) {
+    setError(message);
     return '';
   }
 
   const environment = envEl.value;
   const baseUrl = ENVIRONMENTS[environment] || ENVIRONMENTS.production;
-  const operationKey = 'create-app';
+  const busyKey = 'create-app';
 
-  stateMachine.beginOperation(operationKey);
+  beginBusy(busyKey);
 
   try {
     setAssignmentNameFeedback('');
     setStatus('Creating app ID...', false, { persist: true });
 
-    const createdAssignment = await retryAsync(() => apiClient.createAssignment(baseUrl, {
-      appid: desiredAppId
-    }));
+    const createdAssignment = await runWithRetry(() =>
+      apiClient.createAssignment(baseUrl, {
+        appid: desiredAppId
+      })
+    );
 
     const createdAssignmentId = createdAssignment?.id ? String(createdAssignment.id) : '';
     const createdAssignmentAppId = APP_ID_PATTERN.test(createdAssignment?.app_id ?? '')
@@ -846,7 +667,7 @@ async function createNewApp(desiredAppId) {
     hideNewAssignmentInput();
 
     const preferredSelection = createdAssignmentAppId || createdAssignmentId;
-    await loadAppIds(preferredSelection, { userIdOverride: userId });
+    await loadAppIds(preferredSelection, { userIdOverride: normalized });
 
     const optionValues = Array.from(assignmentEl.options)
       .map(option => option.value)
@@ -869,31 +690,29 @@ async function createNewApp(desiredAppId) {
     }
 
     if (!appIdToSave) {
-      setStatus(
-        'App ID created but could not be auto-selected. Please choose it manually.',
-        true,
-        { persist: true }
-      );
+      setError('App ID created but could not be auto-selected. Please choose it manually.');
       ensureAppFieldEditable();
       return '';
     }
 
     assignmentEl.value = String(appIdToSave);
     setStatus('App ID created. Save to confirm.');
-    stateMachine.clearError();
+    setError('');
     return String(appIdToSave);
   } catch (error) {
     console.error('Failed to create app ID', error);
     const message = getFriendlyErrorMessage(error, 'Unable to create app ID. Please try again.');
-    setStatus(message, true, { persist: true });
-    stateMachine.setError(message);
+    setError(message);
     throw error;
   } finally {
-    stateMachine.endOperation(operationKey);
+    endBusy(busyKey);
   }
 }
 
 async function updateConnection() {
+  if (!connectionEl) {
+    return;
+  }
   connectionEl.textContent = 'Checking...';
   chrome.runtime.sendMessage({ type: 'health-check' }, res => {
     const ok = res?.ok;
@@ -919,56 +738,31 @@ async function init() {
         lockField('appId', { saved: true });
       } else if (loadedAppIds.length) {
         ensureAppFieldEditable();
-        setStatus('Saved app ID is unavailable. Please choose another app ID.', true, {
-          persist: true
-        });
+        setError('Saved app ID is unavailable. Please choose another app ID.');
       }
     }
   } else {
     unlockField('userId');
     resetAppField();
-    setStatus(USER_ID_PROMPT_MESSAGE, false, { persist: true });
+    setStatus('Enter your User ID to load saved app IDs.', false, { persist: true });
   }
 
   updateConnection();
   updateSubmitButton();
 }
 
-addManagedEventListener(window, 'error', event => {
-  const message = getFriendlyErrorMessage(
-    event?.error ?? event?.message ?? 'Unexpected error',
-    'An unexpected error occurred.'
-  );
-  announceGlobalError(message);
-});
-
-addManagedEventListener(window, 'unhandledrejection', event => {
-  const message = getFriendlyErrorMessage(
-    event?.reason ?? event,
-    'An unexpected error occurred.'
-  );
-  announceGlobalError(message);
-});
-
-addManagedEventListener(window, 'unload', runCleanup);
-
 init();
 
-addManagedEventListener(envEl, 'change', () => {
+envEl.addEventListener('change', () => {
   hideNewAssignmentInput();
   const activeUserId = userIdEl.value.trim();
 
-  const previousAppState = getFieldState('appId');
-  updateFieldState('appId', { saved: false });
+  setFieldState('appId', { saved: false });
 
-  const userFieldState = getFieldState('userId');
-
-  if (activeUserId && userFieldState.saved) {
-    const initialSelection = previousAppState.saved ? assignmentEl.value : '';
-    loadAppIds(initialSelection, {
+  if (activeUserId && formState.fields.userId.saved) {
+    scheduleAppIdLoad(formState.fields.appId.saved ? assignmentEl.value : '', {
       userIdOverride: activeUserId,
-      silent: true,
-      debounce: true
+      silent: true
     });
   } else {
     resetAppField();
@@ -978,8 +772,8 @@ addManagedEventListener(envEl, 'change', () => {
   updateSubmitButton();
 });
 
-addManagedEventListener(userIdEl, 'input', () => {
-  updateFieldState('userId', { saved: false, editing: true, locked: false });
+userIdEl.addEventListener('input', () => {
+  setFieldState('userId', { saved: false, editing: true });
   if (userIdSavedIcon) {
     userIdSavedIcon.hidden = true;
   }
@@ -988,10 +782,11 @@ addManagedEventListener(userIdEl, 'input', () => {
   }
   resetAppField();
   lastLoadedUserId = '';
+  setError('');
   updateSubmitButton();
 });
 
-addManagedEventListener(userIdEl, 'blur', async () => {
+userIdEl.addEventListener('blur', async () => {
   const value = userIdEl.value.trim();
   if (!value) {
     resetAppField();
@@ -999,23 +794,27 @@ addManagedEventListener(userIdEl, 'blur', async () => {
     return;
   }
 
-  const currentUserState = getFieldState('userId');
-  lockField('userId', { saved: currentUserState.saved });
+  const { valid, message, normalized } = validateUserId(value);
+  if (!valid) {
+    setError(message);
+    ensureAppFieldEditable();
+    return;
+  }
 
-  if (value !== lastLoadedUserId) {
-    const appState = getFieldState('appId');
-    await loadAppIds(appState.saved ? assignmentEl.value : '', {
-      userIdOverride: value,
-      debounce: true
+  lockField('userId', { saved: formState.fields.userId.saved });
+
+  if (normalized !== lastLoadedUserId) {
+    await loadAppIds(formState.fields.appId.saved ? assignmentEl.value : '', {
+      userIdOverride: normalized
     });
   }
 });
 
-addManagedEventListener(assignmentEl, 'change', () => {
+assignmentEl.addEventListener('change', () => {
   const selectedValue = assignmentEl.value;
   const isAddingNewAssignment = selectedValue === ADD_NEW_ASSIGNMENT_OPTION;
 
-  updateFieldState('appId', { saved: false });
+  setFieldState('appId', { saved: false });
 
   if (isAddingNewAssignment) {
     ensureAppFieldEditable();
@@ -1042,21 +841,16 @@ addManagedEventListener(assignmentEl, 'change', () => {
   updateSubmitButton();
 });
 
-if (newAssignmentInput) {
-  addManagedEventListener(newAssignmentInput, 'input', () => {
-    if (assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION) {
-      const { message } = validateAssignmentName(newAssignmentInput.value ?? '');
-      setAssignmentNameFeedback(message);
-    } else {
-      setAssignmentNameFeedback('');
-    }
+newAssignmentInput?.addEventListener('input', () => {
+  if (assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION) {
+    const { message } = validateAssignmentName(newAssignmentInput.value ?? '');
+    setAssignmentNameFeedback(message);
+  } else {
+    setAssignmentNameFeedback('');
+  }
 
-    updateSubmitButton();
-  });
-}
-
-userIdEditIcon?.setAttribute('role', 'button');
-userIdEditIcon?.setAttribute('tabindex', '0');
+  updateSubmitButton();
+});
 
 function handleIconActivation(handler) {
   return event => {
@@ -1081,11 +875,13 @@ if (userIdEditIcon) {
     }
     unlockField('userId');
     resetAppField();
-    setStatus('');
+    setError('');
   };
 
-  addManagedEventListener(userIdEditIcon, 'click', handleIconActivation(handleUserEdit));
-  addManagedEventListener(userIdEditIcon, 'keydown', handleIconActivation(handleUserEdit));
+  userIdEditIcon.setAttribute('role', 'button');
+  userIdEditIcon.setAttribute('tabindex', '0');
+  userIdEditIcon.addEventListener('click', handleIconActivation(handleUserEdit));
+  userIdEditIcon.addEventListener('keydown', handleIconActivation(handleUserEdit));
 }
 
 if (appIdEditIcon) {
@@ -1104,23 +900,24 @@ if (appIdEditIcon) {
     updateSubmitButton();
   };
 
-  addManagedEventListener(appIdEditIcon, 'click', handleIconActivation(handleAppEdit));
-  addManagedEventListener(appIdEditIcon, 'keydown', handleIconActivation(handleAppEdit));
+  appIdEditIcon.setAttribute('role', 'button');
+  appIdEditIcon.setAttribute('tabindex', '0');
+  appIdEditIcon.addEventListener('click', handleIconActivation(handleAppEdit));
+  appIdEditIcon.addEventListener('keydown', handleIconActivation(handleAppEdit));
 }
 
-addManagedEventListener(submitBtn, 'click', async () => {
+submitBtn.addEventListener('click', async () => {
   if (submitBtn.disabled || isSubmitting) {
     return;
   }
 
-  const userId = userIdEl.value.trim();
+  const userIdValue = userIdEl.value.trim();
   const selectedAssignment = assignmentEl.value;
   const isAddingNewAssignment = selectedAssignment === ADD_NEW_ASSIGNMENT_OPTION;
-  const userFieldState = getFieldState('userId');
-  const appFieldState = getFieldState('appId');
 
-  if (!userId) {
-    setStatus(USER_ID_PROMPT_MESSAGE, true, { persist: true });
+  const { valid: userValid, message: userMessage, normalized: normalizedUserId } = validateUserId(userIdValue);
+  if (!userValid) {
+    setError(userMessage);
     updateSubmitButton();
     return;
   }
@@ -1129,56 +926,41 @@ addManagedEventListener(submitBtn, 'click', async () => {
   updateSubmitButton();
 
   try {
-    let savedAppId = appFieldState.saved ? assignmentEl.value : '';
+    let savedAppId = formState.fields.appId.saved ? assignmentEl.value : '';
     if (savedAppId === ADD_NEW_ASSIGNMENT_OPTION) {
       savedAppId = '';
     }
 
-    await withSettingsTransaction(async () => {
-      if (!userFieldState.saved) {
-        await saveUserId(userId, { appIdForSettings: savedAppId });
-      }
+    if (!formState.fields.userId.saved) {
+      await saveUserId(normalizedUserId, { appIdForSettings: savedAppId });
+    }
 
-      if (!appFieldState.saved) {
-        let appIdToPersist = savedAppId;
+    if (!formState.fields.appId.saved) {
+      if (isAddingNewAssignment) {
+        const { valid, message, normalizedName } = validateAssignmentName(newAssignmentInput?.value ?? '');
 
-        if (isAddingNewAssignment) {
-          const { valid, message, normalizedName } = validateAssignmentName(
-            newAssignmentInput?.value ?? ''
-          );
-
-          if (!valid) {
-            setAssignmentNameFeedback(message);
-            setStatus(message, true, { persist: true });
-            throw new Error(message);
-          }
-
-          const createdAppId = await createNewApp(normalizedName);
-          if (!createdAppId) {
-            return;
-          }
-
-          appIdToPersist = createdAppId;
-        } else if (selectedAssignment) {
-          appIdToPersist = selectedAssignment;
+        if (!valid) {
+          setAssignmentNameFeedback(message);
+          setError(message);
+          throw new Error(message);
         }
 
-        if (appIdToPersist) {
-          assignmentEl.value = appIdToPersist;
-          await saveAppSelection(appIdToPersist);
-          if (isAddingNewAssignment) {
-            setStatus('App ID created and saved.');
-          }
-        } else {
+        const createdAppId = await createNewApp(normalizedName);
+        if (!createdAppId) {
           ensureAppFieldEditable();
+          return;
         }
+
+        await saveAppSelection(createdAppId);
+        setStatus('App ID created and saved.');
+      } else if (selectedAssignment) {
+        await saveAppSelection(selectedAssignment);
       }
-    });
+    }
 
     updateSubmitButton();
   } catch (error) {
     console.error('Submit failed', error);
-    await init();
   } finally {
     isSubmitting = false;
     updateSubmitButton();
