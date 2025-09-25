@@ -51,6 +51,22 @@ class AsyncMemoryService:
         assignment_id = str(uuid.uuid4())
         created_at = datetime.utcnow()
 
+        try:
+            await self.add_memory(
+                user_id=user_id,
+                app_id=app_id,
+                messages=[
+                    {"role": "user", "content": f"Starting work on {app_id}"}
+                ],
+            )
+        except Exception as exc:  # pragma: no cover - network failures
+            logger.error(
+                "Failed to seed assignment memory for user=%s app=%s: %s",
+                user_id,
+                app_id,
+                exc,
+            )
+
         return {
             "id": assignment_id,
             "app_id": app_id,
