@@ -72,6 +72,11 @@ class APIClient {
         const { userId } = await getSettings();
         const normalizedPayload = { ...payload };
 
+        const providedUserId =
+            typeof normalizedPayload.user_id === 'string'
+                ? normalizedPayload.user_id.trim()
+                : '';
+
         if (!normalizedPayload.appid) {
             if (normalizedPayload.app_id) {
                 normalizedPayload.appid = normalizedPayload.app_id;
@@ -80,8 +85,10 @@ class APIClient {
             }
         }
 
-        if (userId) {
-            normalizedPayload.user_id = userId;
+        if (userId && userId.trim()) {
+            normalizedPayload.user_id = userId.trim();
+        } else if (providedUserId) {
+            normalizedPayload.user_id = providedUserId;
         } else {
             delete normalizedPayload.user_id;
         }
@@ -90,8 +97,10 @@ class APIClient {
         delete normalizedPayload.name;
 
         payload.appid = normalizedPayload.appid;
-        if (userId) {
-            payload.user_id = userId;
+        if (userId && userId.trim()) {
+            payload.user_id = userId.trim();
+        } else if (providedUserId) {
+            payload.user_id = providedUserId;
         } else {
             delete payload.user_id;
         }
