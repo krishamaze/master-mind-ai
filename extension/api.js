@@ -77,12 +77,20 @@ class APIClient {
                 ? normalizedPayload.user_id.trim()
                 : '';
 
-        if (!normalizedPayload.appid) {
-            if (normalizedPayload.app_id) {
-                normalizedPayload.appid = normalizedPayload.app_id;
-            } else if (normalizedPayload.name) {
-                normalizedPayload.appid = normalizedPayload.name;
+        const derivedAppId = (() => {
+            if (typeof normalizedPayload.app_id === 'string' && normalizedPayload.app_id.trim()) {
+                return normalizedPayload.app_id.trim();
             }
+            if (typeof normalizedPayload.name === 'string' && normalizedPayload.name.trim()) {
+                return normalizedPayload.name.trim();
+            }
+            return '';
+        })();
+
+        if (derivedAppId) {
+            normalizedPayload.app_id = derivedAppId;
+        } else {
+            delete normalizedPayload.app_id;
         }
 
         if (userId && userId.trim()) {
@@ -93,10 +101,13 @@ class APIClient {
             delete normalizedPayload.user_id;
         }
 
-        delete normalizedPayload.app_id;
         delete normalizedPayload.name;
 
-        payload.appid = normalizedPayload.appid;
+        if (derivedAppId) {
+            payload.app_id = derivedAppId;
+        } else {
+            delete payload.app_id;
+        }
         if (userId && userId.trim()) {
             payload.user_id = userId.trim();
         } else if (providedUserId) {
@@ -104,7 +115,6 @@ class APIClient {
         } else {
             delete payload.user_id;
         }
-        delete payload.app_id;
         delete payload.name;
 
         return this.request('/api/v1/assignments/', {
