@@ -476,7 +476,6 @@ async function handleSubmit() {
     await setSettings({ environment, userId: normalizedUserId, appId: appIdToSave });
 
     lockAppSelection(appIdToSave);
-    hideNewAssignmentInput();
     state.setupComplete = true;
     setStatus('Setup complete.', false, { persist: true });
   } catch (error) {
@@ -492,10 +491,9 @@ async function handleSubmit() {
 function handleAssignmentChange() {
   setError('');
   state.appIdSaved = false;
-  state.setupComplete = false;
   updateAppIdIcons();
 
-  if (assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION) {
+  if (assignmentEl.value === ADD_NEW_ASSIGNMENT_OPTION && !state.setupComplete) {
     showNewAssignmentInput();
   } else {
     hideNewAssignmentInput();
