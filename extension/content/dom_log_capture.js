@@ -23,12 +23,10 @@
     }
   };
 
-  const CONSOLE_LOGS_ENDPOINT = '/api/debug-logs/';
-
   const sendConsoleLogs = payload =>
     new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
-        { type: 'console-logs', endpoint: CONSOLE_LOGS_ENDPOINT, payload },
+        { type: 'console-logs', payload },
         response => {
           const lastError = chrome.runtime.lastError;
           if (lastError) {

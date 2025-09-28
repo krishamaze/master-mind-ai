@@ -42,44 +42,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'conversation') {
-    console.log('💾 Saving conversation:', msg.platform, msg.messages?.length, 'messages');
-    apiClient
-      .saveConversation({
-        platform: msg.platform,
-        messages: msg.messages,
-        timestamp: new Date().toISOString()
-      })
-      .then(data => {
-        console.log('✅ Conversation saved successfully');
-        sendResponse({ success: true, data });
-      })
-      .catch(error => {
-        console.error('❌ Failed to save conversation:', error.message);
-        sendResponse({ success: false, error: error.message });
-      });
+    console.log('ℹ️ Conversation capture received but backend does not expose a conversations endpoint.');
+    sendResponse({ success: true, data: { persisted: false } });
     return true;
   }
 
   if (msg.type === 'console-logs') {
-    console.log('📝 Forwarding console logs to backend', msg.payload?.entries?.length ?? 0);
-    apiClient
-      .request(msg.endpoint ?? '/api/debug-logs/', {
-        method: 'POST',
-        body: JSON.stringify({
-          platform: msg.payload?.platform,
-          page_url: msg.payload?.pageUrl,
-          first_logged_at: msg.payload?.firstLoggedAt,
-          entries: msg.payload?.entries ?? []
-        })
-      })
-      .then(data => {
-        console.log('✅ Console logs forwarded successfully');
-        sendResponse({ success: true, data });
-      })
-      .catch(error => {
-        console.error('❌ Failed to forward console logs:', error.message);
-        sendResponse({ success: false, error: error.message });
-      });
+    console.log('ℹ️ Console log forwarding disabled for FastAPI backend');
+    sendResponse({ success: true, data: { forwarded: false } });
     return true;
   }
 
@@ -100,7 +70,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'search') {
     console.log('🔍 Searching memory:', msg.query);
     apiClient
-      .searchMemory({ query: msg.query })
+      .searchMemories({ query: msg.query })
       .then(data => {
         console.log('✅ Memory search completed');
         sendResponse({ success: true, data });

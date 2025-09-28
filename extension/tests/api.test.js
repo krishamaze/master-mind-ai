@@ -49,7 +49,7 @@ describe('APIClient.createAssignment', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
 
     const [requestUrl, options] = fetch.mock.calls[0];
-    expect(requestUrl).toBe('https://custom.example/api/v1/assignments/');
+    expect(requestUrl).toBe('https://custom.example/api/v1/assignments');
 
     const body = JSON.parse(options.body);
     expect(body).toEqual({ app_id: 'NewApp01', user_id: 'user-123' });
@@ -77,7 +77,7 @@ describe('APIClient.createAssignment', () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [requestUrl, options] = fetch.mock.calls[0];
-    expect(requestUrl).toBe('https://fallback.example/api/v1/assignments/');
+    expect(requestUrl).toBe('https://fallback.example/api/v1/assignments');
 
     const body = JSON.parse(options.body);
     expect(body).toEqual({ app_id: 'HGFEDCBA', user_id: 'user-abc' });
