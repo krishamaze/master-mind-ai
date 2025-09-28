@@ -117,7 +117,7 @@ class MemoryService:
 
         metadata = memory.get("metadata")
         if isinstance(metadata, dict):
-            meta_app_id = metadata.get("app_id")
+            meta_app_id = memory.get("app_id")
             if isinstance(meta_app_id, str) and meta_app_id.strip():
                 return meta_app_id.strip()
         return None
