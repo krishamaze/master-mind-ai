@@ -77,13 +77,12 @@ class APIClient {
           ? snakeAppId.trim()
           : '';
 
-    if (normalizedUserId) {
-      payload.user_id = normalizedUserId;
+    if (!normalizedUserId || !normalizedAppId) {
+      throw new Error('Both user_id and app_id are required to create an assignment.');
     }
 
-    if (normalizedAppId) {
-      payload.app_id = normalizedAppId;
-    }
+    payload.user_id = normalizedUserId;
+    payload.app_id = normalizedAppId;
 
     return this.request('/api/v1/assignments', {
       method: 'POST',
