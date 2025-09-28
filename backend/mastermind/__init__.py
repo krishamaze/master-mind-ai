@@ -1,1 +1,0 @@
-"""Mastermind project package."""

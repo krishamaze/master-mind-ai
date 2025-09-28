@@ -55,15 +55,14 @@ describe('APIClient.createAssignment', () => {
     expect(body).toEqual({ app_id: 'NewApp01', user_id: 'user-123' });
   });
 
-  test('omits empty values from the payload', async () => {
-    await apiClient.createAssignment('https://custom.example', {
-      userId: '   ',
-      appId: 'NewApp01'
-    });
-
-    const [, options] = fetch.mock.calls[0];
-    const body = JSON.parse(options.body);
-    expect(body).toEqual({ app_id: 'NewApp01' });
+  test('throws when required identifiers are missing', async () => {
+    await expect(
+      apiClient.createAssignment('https://custom.example', {
+        userId: '   ',
+        appId: 'NewApp01'
+      })
+    ).rejects.toThrow('Both user_id and app_id are required to create an assignment.');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test('falls back to the configured base URL when none is provided', async () => {
