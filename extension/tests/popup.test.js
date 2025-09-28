@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-const ADD_NEW_ASSIGNMENT_OPTION = '__add_new_assignment__';
+const ADD_NEW_ASSIGNMENT_OPTION = 'NEW';
 
 function setupDom() {
   document.body.innerHTML = `
@@ -101,6 +101,18 @@ describe('popup assignment creation flow', () => {
     const newAssignmentInput = document.getElementById('new-assignment-name');
     const submitButton = document.getElementById('submit');
 
+    const userIdInput = document.getElementById('userId');
+    userIdInput.value = 'user-123';
+    submitButton.disabled = false;
+    submitButton.click();
+    await flushPromises();
+    await flushPromises();
+    expect(mockFetchUserAppIds).toHaveBeenCalled();
+
+    const addNewOption = assignmentSelect.querySelector(`option[value="${ADD_NEW_ASSIGNMENT_OPTION}"]`);
+    expect(addNewOption).toBeTruthy();
+
+    assignmentSelect.disabled = false;
     assignmentSelect.value = ADD_NEW_ASSIGNMENT_OPTION;
     assignmentSelect.dispatchEvent(new Event('change'));
 

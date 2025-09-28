@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -o errexit
 
-# Pre-deploy script for Render
-cd /app
-python manage.py migrate --noinput
+# No migrations required for the FastAPI service
+echo "Render predeploy: no-op for backend-v2"

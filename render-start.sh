@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -o errexit
 
-# Start script for Render
 cd /app
-gunicorn mastermind.wsgi:application --bind 0.0.0.0:${PORT:-8000}
+exec uvicorn backend-v2.app.main:app --host 0.0.0.0 --port "${PORT:-8000}"

@@ -7,35 +7,11 @@ services:
     buildCommand: ./render-build.sh
     startCommand: ./render-start.sh
     preDeployCommand: ./render-predeploy.sh
-    healthCheckPath: /
+    healthCheckPath: /api/v1/health
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: mastermind-db
-          property: connectionString
-      - key: SECRET_KEY
-        generateValue: true
       - key: MEM0_API_KEY
         sync: false
-      - key: CORS_ALLOWED_ORIGINS
+      - key: OPENAI_API_KEY
         sync: false
-      - key: MEM0_API_BASE_URL
-        value: https://api.mem0.ai
-      - key: MEM0_PROVIDER
-        value: supabase
-      - key: MEM0_EMBEDDING_DIM
-        value: "1536"
-      - key: MEM0_INDEX_METHOD
-        value: hnsw
-      - key: ENVIRONMENT
-        value: production
     autoDeploy: true
     numInstances: 1
-
-databases:
-  - name: mastermind-db
-    plan: free
-    diskSizeGB: 10
-    ipAllowList: []
-    postgresExtensions:
-      - pgvector

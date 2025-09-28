@@ -184,8 +184,8 @@ class Validator {
         if (normalized.length === 0) {
             return { valid: false, message: 'App ID is required.', normalized };
         }
-        if (normalized.length < 8) {
-            return { valid: false, message: 'App ID must be at least 8 characters.', normalized };
+        if (normalized.length < 3) {
+            return { valid: false, message: 'App ID must be at least 3 characters.', normalized };
         }
         if (normalized.length > 50) {
             return { valid: false, message: 'App ID must be less than 50 characters.', normalized };
@@ -609,7 +609,7 @@ async function loadAppIds(userId, preferredAppId = '', forceRefresh = false) {
             appIds = rawAppIds
                 .filter(item => typeof item === 'string')
                 .map(item => item.trim())
-                .filter(item => item.length >= 8 && !seen.has(item) && (seen.add(item) || true))
+                .filter(item => item.length >= 3 && !seen.has(item) && (seen.add(item) || true))
                 .sort();
 
             console.log(`🔍 LOADER: Processed app_ids:`, appIds);

@@ -1,29 +1,7 @@
-# Master Mind AI Project Context
+# Technical Context for Agents
 
-## Architecture Context
-- **Browser Extension**: Includes content scripts, background scripts, and a popup interface that capture and relay AI conversations.
-- **Django Backend**: Provides REST API endpoints for conversation storage and prompt enhancement.
-- **Database**: PostgreSQL with the pgvector extension for semantic embeddings.
-- **Memory Layer**: Mem0.ai manages intelligent organization and retrieval of stored conversations.
-- **Integration**: The extension captures conversations and the backend enriches future prompts with relevant context.
-
-## Development Context
-- Web-based development workflow (GitHub web UI, Codex agent).
-- No terminal or VSCode usage; rely on browser-based tools only.
-- Iterate on single components at a time.
-- Provide evidence-driven problem solving with complete logs.
-- Handle complexity progressively.
-
-## Technical Context
-- Django REST Framework powers API endpoints.
-- Chrome Extension Manifest V3 for extension architecture.
-- PostgreSQL with pgvector enables vector similarity search.
-- Mem0.ai SDK handles memory operations.
-- CORS configured to allow extension communication.
-
-## Business Context
-- Delivers universal AI memory enhancement across platforms.
-- Maintains persistent context awareness for AI conversations.
-- Supports automated project detection and categorization.
-- Optimizes token usage through intelligent context provision.
-
+- `AsyncMemoryService` powers GraphMemory search, Graph-enabled assignment seeding, and vocabulary whitelisting so enhancements stay within hard stop sequences and character ceilings.【F:backend-v2/app/services/memory.py†L48-L167】【F:backend-v2/app/services/memory.py†L280-L575】
+- Stop sequences (`\n`, `—`, `•`) and strict char limits are enforced after every OpenAI call, with fallback to the original prompt when guardrails trigger.【F:backend-v2/app/services/memory.py†L494-L575】
+- App-scoped context comes from the Mem0 Entities API plus per-app GraphMemory relations; the service filters relations by `app_id` before building context payloads.【F:backend-v2/app/services/memory.py†L70-L167】【F:backend-v2/app/services/memory.py†L358-L452】
+- Key Pydantic responses: `AssignmentResponse` exposes seeded assignment metadata, while `MemoryResult` captures search hits with optional metadata for the extension UI.【F:backend-v2/app/models.py†L95-L133】
+- Extension code must follow the updated FastAPI contracts used by `background.js` and `api.js`, aligning popup validation with the backend’s `/api/v1/assignments`, `/api/v1/users/{id}/app-ids`, `/api/v1/memories/search`, and `/api/v1/prompts/enhance` routes.【F:extension/background.js†L40-L143】【F:extension/api.js†L5-L99】
